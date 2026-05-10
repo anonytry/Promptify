@@ -1,0 +1,16 @@
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Promptify system files
+.promptify/
+
+# Local configuration
+.username
+.draw
+.promptify_font.flf
+
+# OS generated files
+.DS_Store
+.directory
