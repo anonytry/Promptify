@@ -35,9 +35,6 @@ uninstall_promptify() {
     opts+=("Remove Home Assets$asset_sel")
     actions+=(clean_assets)
 
-    opts+=("Delete Cloned Repository")
-    actions+=(mark_delete_repo)
-
     # 3. Selection Menu
     local choices
     choices=$(checkbox_menu "Uninstall Management" "${opts[@]}")
@@ -50,30 +47,15 @@ uninstall_promptify() {
 
     echo -e "\n\e[1;34m[*] Starting uninstallation process...\e[0m"
 
-    DELETE_REPO_FLAG=false
     for choice in $choices; do
         action="${actions[$choice]}"
-        if [[ "$action" == "mark_delete_repo" ]]; then
-            DELETE_REPO_FLAG=true
-        else
-            $action
-        fi
+        $action
     done
 
     # 4. Shell Revert Logic
     revert_shell_to_bash
 
     center_print "\e[1;32m[✔] Cleanup Complete!\e[0m"
-
-    if [[ "$DELETE_REPO_FLAG" == "true" ]]; then
-        echo -e "\e[1;33m[!] Warning: This will delete the current folder ($INSTALL_DIR)\e[0m"
-        if confirm_action "Finalize deletion?" "y"; then
-            cd "$HOME" || exit
-            rm -rf "$INSTALL_DIR"
-            echo -e "\e[1;31m[*] Repository deleted. Goodbye!\e[0m"
-            exit 0
-        fi
-    fi
     
     press_enter
 }
@@ -84,7 +66,9 @@ clean_shell_profile() {
         center_print "\e[1;34m[*] \e[0mCleaning ~/.zshrc..."
         sed_i -e '/# --- Promptify Config ---/,/# --- End Promptify Config ---/d' \
               -e '/PROMPTIFY_DIR/d' \
-              -e '/build_prompt/d' "$HOME/.zshrc" 2>/dev/null
+              -e '/build_prompt/d' \
+              -e '/alias Promptify=/d' \
+              -e '/alias pty=/d' "$HOME/.zshrc" 2>/dev/null
         
         if [[ -f "$HOME/.zshrc.bak" ]]; then
             center_print "\e[1;34m[*] \e[0mRestoring and cleaning ~/.zshrc.bak..."
@@ -106,6 +90,19 @@ clean_sys_dir() {
     local display_path="${SYS_DIR/#$HOME/\~}"
     center_print "\e[1;34m[*] \e[0mRemoving system directory ($display_path)..."
     rm -rf "$SYS_DIR"
+
+    # Remove global binary
+    local bin_path="/usr/local/bin/promptify"
+    [[ "$OS_TYPE" == "termux" ]] && bin_path="$PREFIX/bin/promptify"
+    
+    if [[ -f "$bin_path" ]]; then
+        center_print "\e[1;34m[*] \e[0mRemoving global command..."
+        if [[ "$OS_TYPE" == "termux" ]]; then
+            rm -f "$bin_path" 2>/dev/null
+        else
+            $SUDO rm -f "$bin_path" 2>/dev/null
+        fi
+    fi
 }
 
 clean_ui_settings() {

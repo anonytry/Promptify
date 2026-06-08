@@ -2,10 +2,12 @@
 
 manage_banner() {
     while true; do
-        BANNER_CHOICE=$(radio_menu "Banner Management" "" "" \
-            "Update Banner" \
+        BANNER_CHOICE=$(radio_menu "Banner Management" "" "current_banner_preview" 0 -1 \
+            "Add/Update Banner" \
             "Remove Banner" \
             "Back")
+
+
 
         [[ "$BANNER_CHOICE" == "CANCELLED" || "$BANNER_CHOICE" == 2 ]] && break
 
@@ -20,6 +22,12 @@ manage_banner() {
                     BANNER_NAME="$new_name"
                     # shellcheck disable=SC2034
                     USE_BANNER="true"
+                    
+                    echo "NAME=\"$BANNER_NAME\"" > "$HOME/.username"
+                    echo "FONT=\"$CUR_FONT\"" >> "$HOME/.username"
+                    touch "$HOME/.draw" 2>/dev/null
+                    
+                    load_prefs
                     calculate_ui_width
                     refresh_ui
                     center_print "\e[1;32m[✔] Applied!\e[0m"
@@ -31,6 +39,8 @@ manage_banner() {
                     # shellcheck disable=SC2034
                     USE_BANNER="false"
                     remove_banner_files
+                    load_prefs
+                    calculate_ui_width
                     refresh_ui
                     center_print "\e[1;32m[✔] Applied!\e[0m"
                     restart_shell

@@ -1,14 +1,20 @@
 #!/bin/bash
+# PROMPTIFY
 
-# ==============================================================================
-# PROMPTIFY - AOSP Style Modular Shell Customizer
-# ==============================================================================
-
-# 1. Mode Detection (Local vs Remote Bootstrap)
+# 1. Mode Detection 
 REPO_URL="https://github.com/TopexGuy/promptify.git"
 IS_LOCAL=false
 CONFIRM_ALL=false
 SILENT_MODE=false
+
+# Resolve script path
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 # Parse flags
 for arg in "$@"; do
@@ -19,23 +25,16 @@ for arg in "$@"; do
     esac
 done
 
-if [[ "$IS_LOCAL" == "false" ]]; then
-    if [[ -f "promptify.sh" && -d "core" ]]; then
-        IS_LOCAL=true
-    elif [[ -n "${BASH_SOURCE[0]}" ]]; then
-        _S_PATH="${BASH_SOURCE[0]}"
-        if [[ -f "$_S_PATH" ]]; then
-            _S_DIR="$(cd "$(dirname "$_S_PATH")" && pwd 2>/dev/null)"
-            if [[ -f "$_S_DIR/promptify.sh" && -d "$_S_DIR/core" ]]; then
-                IS_LOCAL=true
-                INSTALL_DIR="$_S_DIR"
-            fi
-        fi
-    fi
+if [[ -f "$SCRIPT_DIR/promptify.sh" && -d "$SCRIPT_DIR/core" ]]; then
+    INSTALL_DIR="$SCRIPT_DIR"
+elif [[ -f "promptify.sh" && -d "core" ]]; then
+    INSTALL_DIR="$(pwd)"
 fi
 
-if [[ "$IS_LOCAL" == "true" ]]; then
-    INSTALL_DIR="${INSTALL_DIR:-$(pwd)}"
+if [[ "$IS_LOCAL" == "false" ]]; then
+    if [[ -n "$INSTALL_DIR" ]]; then
+        IS_LOCAL=true
+    fi
 fi
 
 # 2. Remote Bootstrap Execution
@@ -43,6 +42,18 @@ if [[ "$IS_LOCAL" == "false" ]]; then
     INSTALL_DIR="$(pwd)/promptify"
     
     [[ "$SILENT_MODE" == "false" ]] && echo -e "\e[1;34m[*] Promptify: Bootstrap Mode\e[0m"
+
+    # Ensure git
+    if ! command -v git &>/dev/null; then
+        [[ "$SILENT_MODE" == "false" ]] && echo -ne "\e[1;34m[*] Installing git...\e[0m"
+        if [[ -d "/data/data/com.termux/files/usr/bin" ]]; then
+            pkg install git -y &>/dev/null
+        elif command -v apt &>/dev/null; then
+            sudo apt update -y &>/dev/null
+            sudo apt install git -y &>/dev/null
+        fi
+        [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;32mDone.\e[0m"
+    fi
     
     if [[ -d "$INSTALL_DIR" ]]; then
         if [[ "$CONFIRM_ALL" == "true" ]]; then
@@ -64,7 +75,7 @@ if [[ "$IS_LOCAL" == "false" ]]; then
     
     cd "$INSTALL_DIR" || exit 1
     
-    # Pass flags to local execution
+    # Pass flags to local exec
     ARGS=("--local")
     [[ "$CONFIRM_ALL" == "true" ]] && ARGS+=("--yes")
     [[ "$SILENT_MODE" == "true" ]] && ARGS+=("--silent")
@@ -73,7 +84,29 @@ if [[ "$IS_LOCAL" == "false" ]]; then
     exit
 fi
 
-# 2.5 Pre-Execution Checks
+# 2.5 Universal Bootstrap
+# Load detection early
+source "$INSTALL_DIR/core/env/detect.sh"
+detect_env
+
+if [[ "$IS_LOCAL" == "true" ]]; then
+    # Bootstrap core tools
+    if ! command -v tput &>/dev/null || ! command -v git &>/dev/null; then
+        [[ "$SILENT_MODE" == "false" ]] && echo -ne "\e[1;34m[*] Installing core dependencies for your system...\e[0m"
+        
+        case $PKG_MNGR in
+            pkg) pkg install ncurses-utils git -y &>/dev/null ;;
+            apt) $SUDO apt update -y &>/dev/null && $SUDO apt install ncurses-bin git -y &>/dev/null ;;
+            pacman) $SUDO pacman -Sy --noconfirm ncurses git &>/dev/null ;;
+            dnf) $SUDO dnf install -y ncurses git &>/dev/null ;;
+            zypper) $SUDO zypper install -y ncurses git &>/dev/null ;;
+            apk) $SUDO apk add ncurses git &>/dev/null ;;
+            brew) brew install ncurses git &>/dev/null ;;
+        esac
+        [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;32mDone.\e[0m"
+    fi
+fi
+
 if [[ ! -w "$HOME" ]]; then
     echo -e "\e[1;31m[!] Error: No write permission in HOME directory ($HOME).\e[0m"
     exit 1
@@ -95,6 +128,8 @@ BOOT_DIRS=("core/env" "core/utils" "core/install" "core/ui" "core/maintenance" "
 for dir in "${BOOT_DIRS[@]}"; do
     for file in "$INSTALL_DIR/$dir"/*.sh; do
         # shellcheck disable=SC1090
+        # Skip pre-sourced detect.sh
+        [[ "$file" == *"core/env/detect.sh" ]] && continue
         [[ -f "$file" ]] && source "$file"
     done
 done
@@ -105,7 +140,7 @@ source "$INSTALL_DIR/core/env/version.sh"
 trap ':' SIGINT SIGTERM
 trap 'tput cnorm' EXIT
 
-# UI Width Calculation for perfect alignment
+# Calculate UI width
 calculate_ui_width() {
     local name="${BANNER_NAME:-Promptify}"
     local fig_w=0
@@ -124,7 +159,7 @@ calculate_ui_width() {
 # shellcheck disable=SC2034
 RESIZED=true
 trap 'RESIZED=true' SIGWINCH
-detect_env
+
 # shellcheck disable=SC2034
 CUR_THEME_BORDER="red"
 # shellcheck disable=SC2034
@@ -142,7 +177,7 @@ update_status() {
     # shellcheck disable=SC2034
     STATUS_ZSH=$(check_status "zsh")
     # shellcheck disable=SC2034
-    STATUS_PKGS=$(check_status "figlet" "ruby" "git" "lolcat")
+    STATUS_PKGS=$(check_status "figlet" "git" "lolcat")
     # shellcheck disable=SC2034
     STATUS_OMZ=$(check_path "$SYS_DIR/oh-my-zsh")
     # shellcheck disable=SC2034
@@ -151,14 +186,28 @@ update_status() {
 
 update_status
 
+# 4.5 Smart First-Run Trigger
+if ! is_promptify_installed; then
+    clear
+    promptify_header
+    echo -e "\n\e[1;34m[!] Welcome to Promptify!\e[0m"
+    echo -e "\e[1;33m[*] It looks like Promptify isn't configured yet.\e[0m"
+    if confirm_action "Start Guided Setup Wizard?" "y"; then
+        guided_setup
+        update_status
+    fi
+fi
+
 # 5. Main Loop
 while true; do
+    # Real-time sync
+    load_prefs
     if [[ "$RESIZED" == "true" ]]; then
         calculate_ui_width
         RESIZED=false
     fi
     
-    MAIN_CHOICE=$(radio_menu "Promptify v${VERSION}" "draw_dashboard" "" \
+    MAIN_CHOICE=$(radio_menu "Promptify v${VERSION}" "draw_dashboard" "" 0 -1 \
         "Quick Setup" \
         "Reload & Apply UI" \
         "Customization" \

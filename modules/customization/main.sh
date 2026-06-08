@@ -2,7 +2,7 @@
 
 manage_customization() {
     while true; do
-        CUST_CHOICE=$(radio_menu "Customization Menu" "" "" \
+        CUST_CHOICE=$(radio_menu "Customization Menu" "" "" 0 -1 \
             "Banner Management" \
             "Banner Font Style" \
             "Prompt Theme Style" \

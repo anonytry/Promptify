@@ -1,57 +1,67 @@
-# 🚀 Promptify
-
-A modular shell customizer for **Termux**, **Arch Linux**, and **Debian/Ubuntu**. Promptify transforms your standard terminal into a high-performance, aesthetically pleasing workspace with zero configuration hassle.
+# Promptify
 
 ---
 
-## 🌟 Key Features
+Promptify is a premium terminal customization engine that transforms your standard shell into a clean, highly functional workspace. Designed for seamless compatibility across Termux and Linux distributions, it delivers a modern, responsive interface without the need for complex manual configuration.
 
-- **🎨 Dynamic Aesthetics:** Perfectly centered ASCII banners and rounded dashboard layouts.
-- **⚡ High Performance:** Minimalist Zsh/Bash prompts with instant Git branch detection.
-- **🖥️ Cross-Platform:** Native support for Termux, Arch (Pacman), and Debian/Ubuntu (APT) environments.
-- **🛠️ Modular UI:** A high-performance interactive menu library with zero flicker.
-- **📦 Smart Dependencies:** Automatically installs and configures `eza`, `bat`, `lolcat`, and essential fonts.
-- **🔄 Auto-Centering:** Responsive UI that adapts to your terminal size, from mobile screens to large desktop monitors.
+## Why use Promptify?
+
+- **Dynamic Typography**: Auto-centered ASCII banners that adapt to your terminal size with vibrant color gradients.
+- **Global Integration**: Install once as a system package and manage your environment from any directory using `promptify`, `Promptify`, or `pty`.
+- **Intelligent Configuration**: Automatically handles dependencies, sets up ZSH, and configures essential plugins silently.
+- **Command Center**: A sleek dashboard to monitor your system environment and toolchain status.
+- **Lightweight Design**: Built with pure bash and native utilities to ensure maximum performance with minimal overhead.
+
+## Previews
+
+Promptify scales perfectly from mobile screens to ultrawide PC monitors.
+
+**Mobile Experience:**
+| | |
+|:---:|:---:|
+| ![Mobile Main Menu](.github/assets/mobile1.png) | ![Mobile Setup](.github/assets/mobile2.png) |
+
+**Desktop Experience:**
+| | | |
+|:---:|:---:|:---:|
+| ![PC Themes](.github/assets/pc1.png) | ![PC Customization](.github/assets/pc2.png) | ![PC Dashboard](.github/assets/pc3.png) |
 
 ---
 
-## 🛠️ Supported Environments & Package Managers
+## Installation
 
-Promptify is built to be truly universal. It automatically detects your environment and uses the appropriate tools:
-
-- **Termux:** Uses `pkg` and configures Android-specific properties.
-- **Arch Linux:** Full `pacman` support with automated dependency resolution.
-- **Debian / Ubuntu / Kali:** Robust `apt` integration with intelligent `sudo` handling.
-- **General Linux:** Generic fallback for other distributions using standard shell primitives.
-
----
-
-## 🚀 Installation
-
-Fire up your terminal and paste this command:
+Run this single command to start the transformation:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/TopexGuy/promptify/refs/heads/main/promptify.sh)
 ```
 
-### ⚡ Unattended Setup
-For power users and scripts, Promptify supports several flags:
+## Post-Installation Commands
 
-- **Auto-confirm:** `--yes` (Skips confirmation prompts)
-- **Silent Mode:** `--silent` (Minimal output during installation)
-- **Combined:** `--yes --silent` (Full unattended installation)
+| Command | Action |
+|:---|:---|
+| `promptify` / `pty` | Open the management menu and settings |
+| `ls` / `l` | See your files with beautiful icons and colors |
+| `cat` | Read files with professional code highlighting (Syntax Highlighting) |
 
----
+## Customization
 
-## 📂 Project Structure
+You can change your look anytime by running `promptify`:
+- **Change Banner**: Update the name or text at the top of your terminal.
+- **Switch Fonts**: Choose between Default, Shadow, or Simple styles.
+- **Prompt Themes**: Switch between Neon, Matrix, Dracula, and more.
 
-- **`core/`**: The engine behind environment detection, UI rendering, and package management.
-- **`modules/`**: Modular components for the dashboard, setup wizard, and customization.
-- **`assets/`**: High-quality fonts, properties, and terminal configurations.
+## What's New in v1.1.0?
 
----
+- **Global Integration**: System-wide access via `promptify`, `Promptify`, and `pty` commands.
+- **Pro-Cat Integration**: Built-in syntax highlighting for the `cat` command.
+- **Auto-Sync Engine**: Local repository changes now sync automatically to the system directory.
+- **Resilient Core**: Hardened configuration cleaning and automated profile creation.
+- **Improved UI Performance**: Flicker-free previews and refactored menu alignment.
 
-## 📜 Acknowledgments & Credits
+[See the full Changelog here](.github/CHANGELOG.md)
+
+## Acknowledgments & Credits
 
 Promptify stands on the shoulders of giants. Special thanks to the following projects:
 
@@ -59,19 +69,13 @@ Promptify stands on the shoulders of giants. Special thanks to the following pro
 - **[Oh My Zsh](https://github.com/ohmyzsh/ohmyzsh)**: The delightful framework for managing Zsh configuration.
 - **[zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions)** & **[zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting)**.
 
----
+## Uninstall
 
-## 🗑️ Uninstallation
+Don't like it? No problem. Uninstalling is just as easy:
+1. Type `promptify`.
+2. Select **Uninstall**.
+3. Your terminal will be back to original in seconds.
 
-We value your system's integrity. To completely revert all changes, simply select **Uninstall** from the Promptify dashboard. The uninstaller offers granular control over what to remove:
-- Revert Shell Profile (`.zshrc`/`.bashrc`)
-- Remove Promptify System Directory
-- Revert Termux UI settings
-- Remove Home assets
+## License
 
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request or report bugs via the issue template.
-
+This project is licensed under the MIT License.

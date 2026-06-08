@@ -54,29 +54,10 @@ draw_dashboard() {
 
     # Print
     printf "%b\n" "$line_top" >&2
-    draw_line_single "$sys_line" "$box_w" "$b_clr" "$r_clr" "$spacer" >&2
-    draw_line_single "$ker_line" "$box_w" "$b_clr" "$r_clr" "$spacer" >&2
-    [[ -n "$and_line" ]] && draw_line_single "$and_line" "$box_w" "$b_clr" "$r_clr" "$spacer" >&2
+    draw_box_line "$sys_line" "$box_w" "│" "$b_clr" "$spacer" "left" >&2
+    draw_box_line "$ker_line" "$box_w" "│" "$b_clr" "$spacer" "left" >&2
+    [[ -n "$and_line" ]] && draw_box_line "$and_line" "$box_w" "│" "$b_clr" "$spacer" "left" >&2
     printf "%b\n" "$line_mid" >&2
-    draw_line_single "$status_line" "$box_w" "$b_clr" "$r_clr" "$spacer" >&2
+    draw_box_line "$status_line" "$box_w" "│" "$b_clr" "$spacer" "left" >&2
     printf "%b\n" "$line_bot" >&2
-}
-
-draw_line_single() {
-    local content="$1"
-    local box_w="$2"
-    local b_clr="$3"
-    local r_clr="$4"
-    local offset_spacer="$5"
-    
-    local clean_len
-    clean_len=$(get_clean_len "$content")
-    local pad_len=$((box_w - clean_len - 4)) # -4 for "│ " and " │"
-    
-    [[ $pad_len -lt 0 ]] && pad_len=0
-    
-    local padding=""
-    [[ $pad_len -gt 0 ]] && padding=$(printf "%${pad_len}s" "")
-
-    printf "%b%b│ %b%s %b│%b\n" "$offset_spacer" "$b_clr" "$content" "$padding" "$b_clr" "$r_clr"
 }

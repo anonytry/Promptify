@@ -7,6 +7,7 @@ SHOW_SIG=true
 FORCE_FONT=""
 DO_CLEAR=true
 DO_CIVIS=true
+IS_PREVIEW=false
 
 # Parse arguments
 while [[ "$#" -gt 0 ]]; do
@@ -14,30 +15,27 @@ while [[ "$#" -gt 0 ]]; do
         --no-sig) SHOW_SIG=false ;;
         --no-clear) DO_CLEAR=false ;;
         --no-civis) DO_CIVIS=false ;;
+        --preview) IS_PREVIEW=true; SHOW_SIG=false ;;
         --font) shift; FORCE_FONT="$1" ;;
-        -*) ;; # Ignore other flags
+        -*) ;; 
         *) [[ -z "$NAME" ]] && NAME="$1" ;;
     esac
     shift
 done
 
+# Load preference if name not passed
+if [[ -z "${NAME// /}" ]]; then
+    if [[ -f ~/.username ]]; then
+        NAME=$(grep "^NAME=" ~/.username | cut -d= -f2- | tr -d '"')
+    fi
+fi
+[[ -z "${NAME// /}" ]] && NAME="Promptify"
+
 [[ "$DO_CLEAR" == "true" ]] && printf "\033[2J\033[H" >&2
 [[ "$DO_CIVIS" == "true" ]] && tput civis >&2
 
-# 1. Setup & Name Logic
+# 1. Setup Logic
 TERM_W=$(tput cols)
-
-# Load preference from ~/.username if not already set via argument
-if [[ -f ~/.username ]]; then
-    [[ -z "$NAME" ]] && NAME=$(grep "^NAME=" ~/.username | cut -d= -f2- | tr -d '"')
-    if [[ -z "$FORCE_FONT" ]]; then
-        FORCE_FONT=$(grep "^FONT=" ~/.username | cut -d= -f2- | tr -d '"')
-    fi
-fi
-
-[[ -z "$NAME" ]] && NAME="Promptify"
-
-# Font Paths
 P_DIR="$PROMPTIFY_DIR"
 [[ -z "$P_DIR" ]] && P_DIR="$HOME/.promptify"
 F_SHADOW="$P_DIR/assets/ASCII-Shadow.flf"
@@ -50,7 +48,7 @@ if ! command -v figlet &> /dev/null; then
     return 0 2>/dev/null || exit 0
 fi
 
-# 2. Font Selection Logic & Auto-Fit
+# 2. Font Selection (V1 Style)
 KERN=""
 [[ ${#NAME} -lt 7 ]] && KERN="-k"
 
@@ -62,11 +60,18 @@ if [[ -n "$FORCE_FONT" ]]; then
         *)        USE_FONT="$F_SHADOW" ;;
     esac
 else
-    USE_FONT="$F_SHADOW"
+    if [[ -f ~/.username ]]; then
+        PREF_FONT=$(grep "^FONT=" ~/.username | cut -d= -f2- | tr -d '"')
+    fi
+    case "${PREF_FONT:-auto}" in
+        "shadow") USE_FONT="$F_SHADOW" ;;
+        "big")    USE_FONT="big"; KERN="" ;;
+        "std")    USE_FONT="standard"; KERN="" ;;
+        *)        USE_FONT="$F_SHADOW" ;;
+    esac
 fi
 
-# Function to capture figlet and check width
-# Optimization: Now populates RAW_LINES directly to avoid double execution
+# Capture figlet output and check fit (V1 Core Logic)
 check_fit() {
     local f_kern="$1"
     local f_font="$2"
@@ -78,16 +83,14 @@ check_fit() {
     for line in "${RAW_LINES[@]}"; do
         [[ ${#line} -gt $max_w ]] && max_w=${#line}
     done
-    # Threshold: Fits if width + 10 padding <= terminal width
-    [[ $max_w -le $((f_max_w - 10)) ]]
+    [[ $max_w -le $((f_max_w - 12)) ]]
 }
 
-# Auto-fit logic: If primary font is too wide, fallback to standard
+# Auto-fit logic (V1 Logic)
 if ! check_fit "$KERN" "$USE_FONT" "$NAME" "$TERM_W"; then
     if [[ "$USE_FONT" != "standard" ]]; then
         USE_FONT="standard"
         KERN=""
-        # Re-run for the fallback font
         mapfile -t RAW_LINES < <(figlet -f "standard" -w 1000 "$NAME" 2>/dev/null)
     fi
 fi
@@ -97,12 +100,10 @@ MIN_LEAD=999
 MAX_LINE_W=0
 for line in "${RAW_LINES[@]}"; do
     [[ -z "${line// /}" ]] && continue
-    # Faster leading space count using parameter expansion
     stripped="${line#"${line%%[! ]*}"}"
     lead_count=$(( ${#line} - ${#stripped} ))
     [[ $lead_count -lt $MIN_LEAD ]] && MIN_LEAD=$lead_count
 done
-
 [[ $MIN_LEAD -eq 999 ]] && MIN_LEAD=0
 
 # Tighten lines
@@ -115,54 +116,58 @@ for line in "${RAW_LINES[@]}"; do
     [[ ${#line} -gt $MAX_LINE_W ]] && MAX_LINE_W=${#line}
 done
 
-# Calculate ideal box width and padding
-# Standard width is content + 10
-WIDTH=$((MAX_LINE_W + 10))
+# 3. Box Dimensions (RESTORED V1 DYNAMIC SIZING + EXTRA BREATHING ROOM)
+# Increase base padding to +14 for better aesthetics
+WIDTH=$((MAX_LINE_W + 14))
 
-# Smart Auto-Padding for small banners on larger screens
-# Aim for at least 60% of terminal width if content is small, but don't exceed 80%
+# V1 Smart Auto-Padding: Minimum 60% of terminal for look
 MIN_TARGET=$(( TERM_W * 6 / 10 ))
-MAX_TARGET=$(( TERM_W * 8 / 10 ))
+[[ $WIDTH -lt $MIN_TARGET ]] && WIDTH=$MIN_TARGET
 
-if [[ $WIDTH -lt $MIN_TARGET ]]; then
-    WIDTH=$MIN_TARGET
-fi
-if [[ $WIDTH -gt $MAX_TARGET ]]; then
-    WIDTH=$MAX_TARGET
+# Previews need stability, so we use a wider fixed range
+if [[ "$IS_PREVIEW" == "true" ]]; then
+    [[ $WIDTH -lt 72 ]] && WIDTH=72
+    [[ $WIDTH -gt 78 ]] && WIDTH=78
 fi
 
-# Ensure it fits in terminal
-[[ $WIDTH -gt $((TERM_W - 2)) ]] && WIDTH=$((TERM_W - 2))
+# ABSOLUTE LIMIT: Ensure it never exceeds terminal width but contains content
+if [[ $WIDTH -gt $((TERM_W - 2)) ]]; then
+    WIDTH=$((TERM_W - 2))
+fi
+
+# CRUCIAL: Box MUST be at least 4 chars wider than content to prevent "fading" through borders
+if [[ $WIDTH -lt $((MAX_LINE_W + 4)) ]]; then
+    WIDTH=$((MAX_LINE_W + 4))
+fi
+
 [[ $WIDTH -lt 40 ]] && WIDTH=40
 
-# Re-calculate padding to center content within the expanded box
-BLOCK_PAD_L=$(( (WIDTH - 2 - MAX_LINE_W) / 2 ))
+# Padding to center content inside box (Balanced Centering)
+# Add 1 before division to round up, which often looks more centered on terminals
+BLOCK_PAD_L=$(( (WIDTH - 2 - MAX_LINE_W + 1) / 2 ))
 [[ $BLOCK_PAD_L -lt 0 ]] && BLOCK_PAD_L=0
 
+# Screen offset for box centering
 OFFSET=$(( (TERM_W - WIDTH) / 2 ))
 [[ $OFFSET -lt 0 ]] && OFFSET=0
 SPACER=$(printf "%${OFFSET}s" "")
 
-# Colorize with robust fallback
+# Colorize with lolcat
 if command -v lolcat &> /dev/null; then
-    # Try Ruby lolcat flags, fallback to standard if it fails
-    COLORED_BLOCK=$(printf "%s\n" "${FINAL_LINES[@]}" | lolcat -f -F 0.1 -p 100 2>/dev/null)
-    [[ -z "$COLORED_BLOCK" ]] && COLORED_BLOCK=$(printf "%s\n" "${FINAL_LINES[@]}" | lolcat 2>/dev/null)
-    
+    COLORED_BLOCK=$(printf "%s\n" "${FINAL_LINES[@]}" | lolcat -f 2>/dev/null)
     if [[ -n "$COLORED_BLOCK" ]]; then
         mapfile -t COLORED_LINES <<< "$COLORED_BLOCK"
     else
-        COLORED_LINES=()
+        COLORED_LINES=("${FINAL_LINES[@]}")
     fi
 else
-    COLORED_LINES=()
+    COLORED_LINES=("${FINAL_LINES[@]}")
 fi
 
-# 3. Final Box Drawing (Double-Line Style ╔ ═ ║ ╚ ╝)
+# 4. Final Drawing
 BOX_CLR="\033[1;34m" 
 RESET="\033[0m"
 
-# Faster and more portable horizontal line generation
 H_LINE=""
 for ((i=0; i<WIDTH-2; i++)); do
     H_LINE+="═"
@@ -172,26 +177,28 @@ printf "%b%b╔%s╗%b\n" "$SPACER" "$BOX_CLR" "$H_LINE" "$RESET" >&2
 
 for i in "${!FINAL_LINES[@]}"; do
     line="${FINAL_LINES[i]}"
-    # Fallback to uncolored line if lolcat output is missing or mismatch
     colored_line="${COLORED_LINES[i]:-$line}"
     line_len=${#line}
     
     pad_r=$(( WIDTH - 2 - BLOCK_PAD_L - line_len ))
     [[ $pad_r -lt 0 ]] && pad_r=0
     
-    printf "%b%b║%b%*s%b%*s%b║%b\n" "$SPACER" "$BOX_CLR" "$RESET" "$BLOCK_PAD_L" "" "$colored_line" "$pad_r" "" "$BOX_CLR" "$RESET" >&2
+    # Robust Surgical Printing
+    printf "%b%b║%b" "$SPACER" "$BOX_CLR" "$RESET" >&2
+    printf "%*s" "$BLOCK_PAD_L" "" >&2
+    printf "%s" "$colored_line" >&2
+    printf "%*s" "$pad_r" "" >&2
+    printf "%b║%b\n" "$BOX_CLR" "$RESET" >&2
 done
 
 printf "%b%b╚%s╝%b\n" "$SPACER" "$BOX_CLR" "$H_LINE" "$RESET" >&2
 
 if [[ "$SHOW_SIG" == "true" ]]; then
     SIG_TEXT="Powered by Promptify ⚡︎"
-    SIG_LEN=${#SIG_TEXT}
-    SIG_OFFSET=$(( OFFSET + WIDTH - SIG_LEN - 2 ))
+    SIG_OFFSET=$(( OFFSET + WIDTH - ${#SIG_TEXT} - 2 ))
     [[ $SIG_OFFSET -lt 0 ]] && SIG_OFFSET=0
     printf "%*s\033[1;35mPowered by \033[1;36mPromptify \033[1;33m⚡︎\033[0m\n" "$SIG_OFFSET" "" >&2
 fi
 
 printf "\n" >&2
-
 [[ "$DO_CIVIS" == "true" ]] && NORM

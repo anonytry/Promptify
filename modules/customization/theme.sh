@@ -1,15 +1,15 @@
 #!/bin/bash
 
 manage_theme() {
-    THEME_CHOICE=$(radio_menu "Prompt Theme Style" "" "theme_preview" \
+    local active_t="${CUR_THEME_IDX:-0}"
+    THEME_CHOICE=$(radio_menu "Prompt Theme Style" "" "theme_preview" "$active_t" "$active_t" \
         "Neon (Cyan/Blue)" \
         "Dracula (Magenta/Cyan)" \
         "Matrix (Green/Green)" \
         "Gold (Yellow/White)" \
         "Classic (Red/Blue)" \
         "Back")
-    # Set default cursor logic for radio_menu would need to be in radio_menu itself
-    # For now, let's keep it simple as the user didn't ask for default selection
+
     [[ "$THEME_CHOICE" == "CANCELLED" || "$THEME_CHOICE" == 5 ]] && return
     
     local theme_name

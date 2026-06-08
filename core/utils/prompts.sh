@@ -41,24 +41,34 @@ input_prompt() {
 
     echo >&2
     echo >&2
+
+    bind '"\e": "CANCEL_INPUT\n"' 2>/dev/null
+
     while true; do
-        echo -ne " \e[1;34m❯\e[0m $label: " >&2
-        if ! read -re result; then
+        if ! read -ep " ❯ $label: " result; then
             echo "CANCELLED"
+            bind -r '"\e"' 2>/dev/null
             return
         fi
         
-        # Check for cancellation
+        if [[ "$result" == "CANCEL_INPUT" ]]; then
+             echo "CANCELLED"
+             bind -r '"\e"' 2>/dev/null
+             return
+        fi
+
         if [[ "$allow_cancel" == "true" && ( "$result" == "c" || "$result" == "C" || "$result" == "cancel" ) ]]; then
             echo "CANCELLED"
+            bind -r '"\e"' 2>/dev/null
             return
         fi
 
         [[ -z "$result" ]] && result="$default"
         [[ -n "$result" ]] && break
     done
+    
+    bind -r '"\e"' 2>/dev/null
 
-    # Truncate if needed
     if [[ -n "$max_len" && ${#result} -gt $max_len ]]; then
         result="${result:0:$max_len}"
     fi

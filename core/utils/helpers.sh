@@ -10,7 +10,7 @@ repeat_char() {
     fi
 }
 
-# Robust version of get_clean_len using sed to avoid greedy glob issues
+# Get length without ANSI codes
 get_clean_len() {
     local text="$1"
     # Remove ANSI escape sequences precisely using sed
@@ -19,7 +19,7 @@ get_clean_len() {
     echo -n "${#clean}"
 }
 
-# Robust backup function
+# Backup file
 backup_file() {
     local file="$1"
     local backup_ext="${2:-.bak}"
@@ -103,7 +103,7 @@ center_print() {
     printf "\r%b%b\033[0m\033[K\n" "$spacer" "$text"
 }
 
-# Portable sed -i
+# Cross-platform sed -i
 sed_i() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' "$@"
@@ -112,26 +112,37 @@ sed_i() {
     fi
 }
 
-draw_line() {
+# Box line drawing
+# Arguments: content, width, char, color, spacer, align
+draw_box_line() {
     local content="$1"
     local box_w="$2"
-    local b_clr="$3"
-    local r_clr="$4"
+    local b_char="${3:-║}"
+    local b_clr="${4:-\033[1;34m}"
     local offset_spacer="$5"
+    local align="${6:-center}"
+    local r_clr="\033[0m"
     
     local clean_len
     clean_len=$(get_clean_len "$content")
-    local total_pad=$((box_w - clean_len - 4)) # -4 for "║ " and " ║"
+    local total_pad=$((box_w - clean_len - 4)) # -4 for "B " and " B"
     [[ $total_pad -lt 0 ]] && total_pad=0
 
-    local pad_l=$((total_pad / 2))
-    local pad_r=$((total_pad - pad_l))
+    local pad_l=0
+    local pad_r=0
+
+    if [[ "$align" == "center" ]]; then
+        pad_l=$((total_pad / 2))
+        pad_r=$((total_pad - pad_l))
+    else
+        # Left align: all padding on the right
+        pad_r=$total_pad
+    fi
     
     local padding_l=""
     local padding_r=""
     [[ $pad_l -gt 0 ]] && padding_l=$(printf "%${pad_l}s" "")
     [[ $pad_r -gt 0 ]] && padding_r=$(printf "%${pad_r}s" "")
 
-    # Use %b for content to interpret escapes and colors
-    printf "%b%b║ %s%b%s %b║%b\n" "$offset_spacer" "$b_clr" "$padding_l" "$content" "$padding_r" "$b_clr" "$r_clr"
+    printf "%b%b%s %s%b%s %b%s%b\n" "$offset_spacer" "$b_clr" "$b_char" "$padding_l" "$content" "$padding_r" "$b_clr" "$b_char" "$r_clr"
 }

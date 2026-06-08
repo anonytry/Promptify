@@ -1,25 +1,29 @@
 #!/bin/bash
 
 manage_font() {
-    FONT_CHOICE=$(radio_menu "Banner Font Style" "" "font_preview" \
-        "Automatic (Width-based)" \
-        "Shadow (3D Style)" \
-        "Big (Blocky)" \
-        "Standard (Simple)" \
+    local cur_f_idx
+    cur_f_idx=$(get_font_idx "$CUR_FONT")
+
+    FONT_CHOICE=$(radio_menu "Banner Font Style" "" "font_preview" "$cur_f_idx" "$cur_f_idx" \
+        "$(get_font_label 0)" \
+        "$(get_font_label 1)" \
+        "$(get_font_label 2)" \
         "Back")
-    [[ "$FONT_CHOICE" == "CANCELLED" || "$FONT_CHOICE" == 4 ]] && return
-    
+    [[ "$FONT_CHOICE" == "CANCELLED" || "$FONT_CHOICE" == 3 ]] && return
+
     local selected_font
-    case "$FONT_CHOICE" in
-        0) selected_font="auto" ;;
-        1) selected_font="shadow" ;;
-        2) selected_font="big" ;;
-        3) selected_font="std" ;;
-    esac
+    selected_font=$(get_font_name "$FONT_CHOICE")
+
     
     if confirm_action "Use '$selected_font' font style?" "y"; then
         # shellcheck disable=SC2034
         CUR_FONT="$selected_font"
+        
+        echo "NAME=\"$BANNER_NAME\"" > "$HOME/.username"
+        echo "FONT=\"$CUR_FONT\"" >> "$HOME/.username"
+        
+        load_prefs
+        calculate_ui_width
         refresh_ui
         center_print "\e[1;32m[✔] Applied!\e[0m"
         restart_shell

@@ -1,14 +1,21 @@
 #!/bin/bash
 
-# Navigation back action - REMOVED AS UNUSED
-
 # Instant UI refresh without full reboot
 refresh_ui() {
     printf "\033[2J\033[H"
+    
+    # Auto-sync core files if running from a local repo to the system dir
+    if [[ "$INSTALL_DIR" != "$SYS_DIR" && -d "$SYS_DIR" ]]; then
+        cp -rf "$INSTALL_DIR/core" "$SYS_DIR/" 2>/dev/null
+        cp -rf "$INSTALL_DIR/modules" "$SYS_DIR/" 2>/dev/null
+        cp -rf "$INSTALL_DIR/assets" "$SYS_DIR/" 2>/dev/null
+        cp -f "$INSTALL_DIR/promptify.sh" "$SYS_DIR/" 2>/dev/null
+    fi
+
     setup_ui "$BANNER_NAME" "$CUR_THEME_BORDER" "$CUR_THEME_TAG" "$CUR_FONT" "$USE_BANNER"
 }
 
-# Restart shell (Left-aligned as requested)
+# Restart shell
 restart_shell() {
     echo
     if confirm_action "Restart Zsh now to apply changes?" "y"; then

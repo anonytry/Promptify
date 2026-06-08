@@ -2,7 +2,7 @@
 
 # shellcheck disable=SC2034
 load_prefs() {
-    # Check if already installed via markers
+    # Install check
     local is_installed=false
     is_promptify_installed && is_installed=true
 
@@ -28,7 +28,7 @@ load_prefs() {
         [[ -n "$b_clr" ]] && CUR_THEME_BORDER="$b_clr"
         [[ -n "$t_clr" ]] && CUR_THEME_TAG="$t_clr"
 
-        # Auto-detect current theme index if possible
+        # Detect theme index
         if [[ "$CUR_THEME_BORDER" == "cyan" && "$CUR_THEME_TAG" == "blue" ]]; then CUR_THEME_IDX=0
         elif [[ "$CUR_THEME_BORDER" == "magenta" && "$CUR_THEME_TAG" == "cyan" ]]; then CUR_THEME_IDX=1
         elif [[ "$CUR_THEME_BORDER" == "green" && "$CUR_THEME_TAG" == "green" ]]; then CUR_THEME_IDX=2

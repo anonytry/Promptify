@@ -1,6 +1,33 @@
 #!/bin/bash
 
-# injects promptify core into user shell profile
+# Create global binary
+create_global_binary() {
+    local bin_path="/usr/local/bin/promptify"
+    [[ "$OS_TYPE" == "termux" ]] && bin_path="$PREFIX/bin/promptify"
+    
+    local target_script="$SYS_DIR/promptify.sh"
+    
+    # Wrapper script
+    cat << EOF > promptify_wrapper
+#!/bin/bash
+bash "$target_script" --local "\$@"
+EOF
+    
+    if [[ "$OS_TYPE" == "termux" ]]; then
+        mv promptify_wrapper "$bin_path" 2>/dev/null || {
+            # Permission fallback
+            cat promptify_wrapper > "$bin_path" 2>/dev/null
+        }
+        chmod +x "$bin_path" 2>/dev/null
+    else
+        # Sudo fallback
+        $SUDO mv promptify_wrapper "$bin_path" 2>/dev/null
+        $SUDO chmod +x "$bin_path" 2>/dev/null
+    fi
+    rm -f promptify_wrapper
+}
+
+# Inject UI profile
 setup_ui() {
     local banner_name=$1
     local theme_border=${2:-"red"}
@@ -28,7 +55,7 @@ setup_ui() {
         cp "$asset_dir/colors.properties" "$HOME/.termux/" || true
         cp "$asset_dir/font.ttf" "$HOME/.termux/" || true
         
-        # Handle different Android versions for keyboard properties
+        # Android properties
         local major_ver
         major_ver=$(echo "$ANDROID_VER" | grep -oE '^[0-9]+' || echo "0")
         if [[ "$major_ver" -gt 0 && "$major_ver" -le 7 ]]; then
@@ -62,29 +89,64 @@ setup_ui() {
         echo "FONT=\"$font_pref\"" >> "$HOME/.username"
     fi
 
-    # Ensure .zshrc exists
-    [[ ! -f "$HOME/.zshrc" ]] && touch "$HOME/.zshrc"
+    # Clean old config robustly
+    if [[ -f "$HOME/.zshrc" ]]; then
+        sed_i '/# --- Promptify Config ---/,/# --- End Promptify Config ---/d' "$HOME/.zshrc" 2>/dev/null
+        # Second pass for orphaned variables if markers were broken
+        sed_i '/PROMPTIFY_DIR=/d' "$HOME/.zshrc" 2>/dev/null
+    else
+        touch "$HOME/.zshrc"
+    fi
 
-    # Clean up old config blocks safely
-    sed_i '/# --- Promptify Config ---/,/# --- End Promptify Config ---/d' "$HOME/.zshrc" 2>/dev/null
-
-    # Only backup if not already backed up
+    # Backup profile
     backup_file "$HOME/.zshrc"
 
-    # Escape special characters in banner name to prevent shell injection/unintended expansion
+    # Escape banner name
     local safe_banner_name="${banner_name//\\/\\\\}"
     safe_banner_name="${safe_banner_name//\"/\\\"}"
     safe_banner_name="${safe_banner_name//\$/\\\$}"
     safe_banner_name="${safe_banner_name//\`/\\\`}"
 
-    # Copy necessary assets to SYS_DIR for persistence
+    # Persist assets
     mkdir -p "$SYS_DIR/assets"
     cp "$INSTALL_DIR/assets/ASCII-Shadow.flf" "$SYS_DIR/assets/" 2>/dev/null
     cp "$INSTALL_DIR/assets/termux.properties" "$SYS_DIR/assets/" 2>/dev/null
     cp "$INSTALL_DIR/assets/colors.properties" "$SYS_DIR/assets/" 2>/dev/null
     cp "$INSTALL_DIR/assets/font.ttf" "$SYS_DIR/assets/" 2>/dev/null
+    
+    # Create global command
+    create_global_binary
 
-    # Prepare the banner line if enabled
+    # Setup aliases block
+    local aliases_content
+    aliases_content=$(cat << EOF
+if command -v eza &> /dev/null; then
+    alias ls='eza --icons --color=auto'
+    alias ll='eza -l --icons --color=auto'
+    alias l='eza --icons'
+elif command -v exa &> /dev/null; then
+    alias ls='exa --color=auto'
+    alias ll='exa -l --color=auto'
+    alias l='exa'
+else
+    alias ls='ls --color=auto'
+    alias ll='ls -l --color=auto'
+    alias l='ls'
+fi
+
+if command -v bat &>/dev/null; then
+    alias cat='bat --style=full --paging=never --color=always'
+elif command -v batcat &>/dev/null; then
+    alias cat='batcat --style=full --paging=never --color=always'
+fi
+
+alias Promptify='promptify'
+alias pty='promptify'
+alias grep='grep --color=auto'
+EOF
+)
+
+    # Setup banner exec
     local banner_line=""
     [[ "$show_banner" == "true" ]] && banner_line="printf '\033[2J\033[H' && [[ -f ~/.draw ]] && PROMPTIFY_DIR=\"\$PROMPTIFY_DIR\" bash ~/.draw"
 
@@ -110,7 +172,7 @@ P_CLR_USER="green"
 P_CLR_PATH="green"
 P_CLR_GIT="red"
 
-# Git Info using vcs_info for performance
+# Git Info
 autoload -Uz vcs_info
 zstyle ':vcs_info:*' enable git
 zstyle ':vcs_info:git:*' formats ' %B%F{blue}(%F{red}%b%F{blue})%f'
@@ -138,26 +200,17 @@ build_prompt() {
 
 export LS_COLORS='rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33:cd=40;33:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32'
 
-if command -v eza &> /dev/null; then
-    alias ls='eza --icons --color=auto'
-    alias ll='eza -l --icons --color=auto'
-elif command -v exa &> /dev/null; then
-    alias ls='exa --color=auto'
-    alias ll='exa -l --color=auto'
-else
-    alias ls='ls --color=auto'
-    alias ll='ls -l --color=auto'
-fi
-alias grep='grep --color=auto'
+$aliases_content
 printf '\e[4 q'
 # --- End Promptify Config ---
 EOF
 
-    # Handle .bashrc updates if it exists
-    if [[ -f "$HOME/.bashrc" ]]; then
-        sed_i '/# --- Promptify Config ---/,/# --- End Promptify Config ---/d' "$HOME/.bashrc" 2>/dev/null
-        
-        cat << EOF >> "$HOME/.bashrc"
+    # Update .bashrc
+    [[ ! -f "$HOME/.bashrc" ]] && touch "$HOME/.bashrc"
+    
+    sed_i '/# --- Promptify Config ---/,/# --- End Promptify Config ---/d' "$HOME/.bashrc" 2>/dev/null
+    
+    cat << EOF >> "$HOME/.bashrc"
 
 # --- Promptify Config ---
 export PROMPTIFY_DIR="$SYS_DIR"
@@ -167,15 +220,16 @@ if [[ -n "$BASH_VERSION" && -z "$ZSH_VERSION" && -x "$(command -v zsh)" && -t 0 
     exec zsh
 fi
 
-# 2. Show banner ONLY if we are staying in Bash (Zsh not installed or already in Zsh)
+# Show banner if staying in Bash
 if [[ -z "$ZSH_VERSION" ]]; then
     $banner_line
 fi
+
+$aliases_content
 # --- End Promptify Config ---
 EOF
-    fi
 
-    # Automatically switch the user's login shell to Zsh if it isn't already the default
+    # Switch default shell to Zsh
     if [[ "$SHELL" != *"zsh"* ]]; then
         local zsh_path
         zsh_path=$(command -v zsh)
