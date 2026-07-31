@@ -34,6 +34,7 @@ setup_ui() {
     local theme_tag=${3:-"blue"}
     local font_pref=${4:-"auto"}
     local show_banner=${5:-"true"}
+    local cat_style="${CUR_CAT_STYLE:-full}"
 
     if [[ ! -d "$SYS_DIR/oh-my-zsh" ]]; then
         return 1
@@ -80,6 +81,9 @@ setup_ui() {
                  $SUDO cp "$asset_dir/ASCII-Shadow.flf" "$figlet_dir/" 2>/dev/null || true
              fi
         fi
+
+        # Install Nerd Font + auto-set it in common desktop terminals
+        apply_desktop_font
     fi
 
     if [[ "$show_banner" == "true" ]]; then
@@ -135,9 +139,9 @@ else
 fi
 
 if command -v bat &>/dev/null; then
-    alias cat='bat --style=full --paging=never --color=always'
+    alias cat='bat --style=$cat_style --paging=never --color=always'
 elif command -v batcat &>/dev/null; then
-    alias cat='batcat --style=full --paging=never --color=always'
+    alias cat='batcat --style=$cat_style --paging=never --color=always'
 fi
 
 alias Promptify='promptify'

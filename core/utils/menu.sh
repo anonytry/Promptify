@@ -9,6 +9,7 @@ draw_menu_item() {
     local spacer="$5"
     local type="${6:-radio}" # Radio or checkbox
     local is_selected="${7:-false}"
+    local is_disabled="${8:-false}"
     
     local content="$label"
     if [[ "$type" == "checkbox" ]]; then
@@ -31,6 +32,11 @@ draw_menu_item() {
     fi
 
     # Radio Logic
+    if [[ "$is_disabled" == "true" ]]; then
+        # Disabled (e.g. missing dependency) - dimmed, not navigable
+        printf '\033[2K\r%b   \033[2;90m%s\033[0m\n' "$spacer" "$label" >&2
+        return
+    fi
     if [[ $index -eq $cursor ]]; then
         # Highlighted
         printf '\033[2K\r%b \033[1;36m❯\033[0m \033[1;36m%s\033[0m\n' "$spacer" "$label" >&2
@@ -178,6 +184,22 @@ radio_menu() {
     local confirmed=false
     local cancelled=false
 
+    # Parse disabled flags (e.g. "Label|disabled")
+    local disabled=()
+    for i in "${!options[@]}"; do
+        if [[ "${options[i]}" == *"|disabled" ]]; then
+            disabled[i]=true
+            options[i]="${options[i]%|disabled}"
+        else
+            disabled[i]=false
+        fi
+    done
+
+    # Never start on a disabled option
+    while [[ "${disabled[$cursor]}" == "true" ]]; do
+        ((cursor++)); [[ $cursor -ge ${#options[@]} ]] && cursor=0
+    done
+
     tput civis >&2
     local p_type=""
     [[ -n "$preview_cmd" ]] && p_type=$($preview_cmd 0 "" "type")
@@ -253,7 +275,7 @@ radio_menu() {
             opt_spacer=$(get_spacer "$opt_block_w")
 
             for i in "${!options[@]}"; do
-                draw_menu_item "${options[i]}" "$i" "$cursor" "$active_idx" "$opt_spacer" "radio"
+                draw_menu_item "${options[i]}" "$i" "$cursor" "$active_idx" "$opt_spacer" "radio" "false" "${disabled[i]}"
             done
             
             if [[ "$p_type" == "footer" && "${options[cursor]}" != "Back" ]]; then
@@ -282,10 +304,16 @@ radio_menu() {
                 case "$key_ext" in
                     '[A'|'OA') 
                         ((cursor--)); [[ $cursor -lt 0 ]] && cursor=$((${#options[@]}-1)) 
+                        while [[ "${disabled[$cursor]}" == "true" ]]; do
+                            ((cursor--)); [[ $cursor -lt 0 ]] && cursor=$((${#options[@]}-1))
+                        done
                         [[ "$p_type" == "header" ]] && redraw=true # Force redraw
                         ;;
                     '[B'|'OB') 
                         ((cursor++)); [[ $cursor -ge ${#options[@]} ]] && cursor=0 
+                        while [[ "${disabled[$cursor]}" == "true" ]]; do
+                            ((cursor++)); [[ $cursor -ge ${#options[@]} ]] && cursor=0
+                        done
                         [[ "$p_type" == "header" ]] && redraw=true # Force redraw
                         ;;
                 esac

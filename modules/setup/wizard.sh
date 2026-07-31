@@ -55,6 +55,27 @@ guided_setup() {
     install_plugins || { center_print "\033[1;31m[!] Plugins failed.\033[0m"; press_enter; return 1; }
     sync_assets
     echo
+
+    # Update Channel selection
+    if [[ "$CHANNEL_SET" == "true" ]]; then
+        save_channel "$CHANNEL"
+        ensure_channel_remote "$CHANNEL"
+        center_print "\033[1;32m[✔] Channel: $CHANNEL\033[0m"
+    else
+        center_print "\033[1;33m[*] \033[0mSelecting update channel..."
+        local chan_def_idx=0
+        [[ "$CUR_CHANNEL" == "testing" ]] && chan_def_idx=1
+        local chan_choice
+        chan_choice=$(radio_menu "Update Channel" "" "" "$chan_def_idx" "$chan_def_idx" \
+            "Stable" \
+            "Testing")
+        [[ "$chan_choice" == "1" ]] && CUR_CHANNEL="testing" || CUR_CHANNEL="stable"
+        save_channel "$CUR_CHANNEL"
+        ensure_channel_remote "$CUR_CHANNEL"
+        center_print "\033[1;32m[✔] Channel: $CUR_CHANNEL\033[0m"
+    fi
+    echo
+
     center_print "\033[1;32m[✔] Environment Ready.\033[0m"
     echo
 

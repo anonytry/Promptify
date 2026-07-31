@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-07-31
+
+### Added
+- **Cat Display Style**: New Customization option to toggle bat's display (Full / Filename only / Lines only / Plain). Disabled with a note when bat isn't installed.
+- **Disabled Menu Items**: `radio_menu` now supports disabled options that are dimmed and skipped during navigation.
+- **Others (Eza, Bat)**: New Dependencies option to install optional power tools skipped during setup.
+- **Nerd Font Auto-Apply**: Installs JetBrainsMono Nerd Font on desktop and applies it in Kitty, Alacritty, GNOME Terminal, Konsole, and XFCE4 Terminal.
+- **Live Install Output**: Installers now show live progress by default; output is only hidden with `--silent`.
+
+### Fixed
+- **Nerd Font Icons**: Replaced `font.ttf` with JetBrainsMono Nerd Font so `ls`/eza icons render correctly on Termux and PC.
+- **dnf Update Check**: No longer fails the dependency step when no updates are available.
+
+---
+
+## [1.1.1] - 2026-07-31
+
+### Added
+- **Update Channels**: Choose between Stable and Testing update channels at first run or from the Updates menu, with channel-aware bootstrap (`--channel` flag supported).
+
+### Fixed
+- **Bootstrap cd Error**: Silenced the `/proc/<pid>/fd: No such file or directory` warning that appeared when running via `bash <(curl ...)`.
+- **lolcat on Termux**: Gem install failed with "OpenSSL is not available". Now installs `openssl` first and reinstalls Ruby if it can't load OpenSSL.
+
+---
+
 ## [1.1.0] - 2026-06-08
 
 ### Added

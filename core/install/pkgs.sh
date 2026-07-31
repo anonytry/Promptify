@@ -11,7 +11,7 @@ install_dependencies() {
         pkg) pkg update -y || return 1 ;;
         apt) $SUDO apt update -y || return 1 ;;
         pacman) $SUDO pacman -Sy --noconfirm || return 1 ;;
-        dnf) $SUDO dnf check-update -y; [[ $? -eq 100 ]] && true || return 1 ;;
+        dnf) $SUDO dnf check-update -y || true ;;
         zypper) $SUDO zypper refresh || return 1 ;;
         apk) $SUDO apk update || return 1 ;;
         brew) brew update || return 1 ;;
@@ -66,6 +66,15 @@ install_dependencies() {
             echo -e "\033[1;34m[*] \033[32mInstalling lolcat via gem (Termux)...\033[0m"
             if ! is_installed ruby; then
                 install_single_pkg "ruby"
+            fi
+            # Termux Ruby needs the openssl package at runtime for gem HTTPS
+            if ! is_installed openssl; then
+                install_single_pkg "openssl"
+            fi
+            # If Ruby still can't load openssl, reinstall it to fix the linkage
+            if ! ruby -e 'require "openssl"' &>/dev/null; then
+                echo -e "\033[1;34m[*] \033[32mReinstalling Ruby with OpenSSL support...\033[0m"
+                pkg reinstall ruby -y || pkg install ruby -y
             fi
             gem install lolcat --no-document || echo "Lolcat gem fail"
         else
@@ -134,6 +143,20 @@ install_single_pkg() {
     esac
 }
 
+install_power_tools() {
+    echo -e "\033[1;34m[*] \033[32mInstalling Others (Eza, Bat)...\033[0m"
+    if ! is_installed eza && ! is_installed exa; then
+        install_single_pkg "eza"
+    else
+        echo -e "\033[1;34m[*] \033[32mEza/Exa already present.\033[0m"
+    fi
+    if ! is_installed bat && ! is_installed batcat; then
+        install_single_pkg "bat"
+    else
+        echo -e "\033[1;34m[*] \033[32mBat already present.\033[0m"
+    fi
+}
+
 sync_assets() {
     echo -e "\033[1;34m[*] \033[32mSyncing UI Assets...\033[0m"
     local asset_dir="$INSTALL_DIR/assets"
@@ -150,6 +173,11 @@ sync_assets() {
     cp "$asset_dir/termux.properties" "$SYS_DIR/assets/" 2>/dev/null || true
     cp "$asset_dir/colors.properties" "$SYS_DIR/assets/" 2>/dev/null || true
     cp "$asset_dir/font.ttf" "$SYS_DIR/assets/" 2>/dev/null || true
+
+    # PC: install Nerd Font + auto-set in common desktop terminals
+    if [[ "$OS_TYPE" != "termux" ]]; then
+        apply_desktop_font
+    fi
 
     if [[ "$OS_TYPE" == "termux" ]]; then
         mkdir -p "$HOME/.termux"

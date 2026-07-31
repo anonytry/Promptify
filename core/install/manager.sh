@@ -17,6 +17,14 @@ manage_dependencies() {
     opts+=("Promptify UI Assets|selected")
     actions+=(sync_assets)
 
+    # Others (Eza/Bat): pre-select only if some are missing
+    local power_sel=""
+    if ! is_installed eza && ! is_installed exa && ! is_installed bat && ! is_installed batcat; then
+        power_sel="|selected"
+    fi
+    opts+=("Others (Eza, Bat)$power_sel")
+    actions+=(install_power_tools)
+
     # 2. Run checkbox menu
     local choices
     choices=$(checkbox_menu "System Components / Repair" "${opts[@]}")

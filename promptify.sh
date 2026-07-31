@@ -2,7 +2,11 @@
 # PROMPTIFY
 
 # 1. Mode Detection 
-REPO_URL="https://github.com/TopexGuy/promptify.git"
+STABLE_URL="https://github.com/TopexGuy/promptify.git"
+TESTING_URL="https://github.com/anonytry/Promptify.git"
+CHANNEL_BRANCH="main"
+CHANNEL="${CHANNEL:-stable}"
+CHANNEL_SET=false
 IS_LOCAL=false
 CONFIRM_ALL=false
 SILENT_MODE=false
@@ -10,20 +14,31 @@ SILENT_MODE=false
 # Resolve script path
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
-  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  DIR="$( cd -P "$( dirname "$SOURCE" )" 2>/dev/null && pwd )"
   SOURCE="$(readlink "$SOURCE")"
   [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
-SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" 2>/dev/null && pwd )"
 
 # Parse flags
-for arg in "$@"; do
-    case "$arg" in
-        --local) IS_LOCAL=true ;;
-        --yes|-y) CONFIRM_ALL=true ;;
-        --silent|-s) SILENT_MODE=true; CONFIRM_ALL=true ;;
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --local) IS_LOCAL=true; shift ;;
+        --yes|-y) CONFIRM_ALL=true; shift ;;
+        --silent|-s) SILENT_MODE=true; CONFIRM_ALL=true; shift ;;
+        --channel) CHANNEL="${2:-stable}"; CHANNEL_SET=true; shift 2 || shift ;;
+        *) shift ;;
     esac
 done
+
+# Silent mode helper: show live output unless --silent is used
+run_cmd() {
+    if [[ "$SILENT_MODE" == "true" ]]; then
+        "$@" &>/dev/null
+    else
+        "$@"
+    fi
+}
 
 if [[ -f "$SCRIPT_DIR/promptify.sh" && -d "$SCRIPT_DIR/core" ]]; then
     INSTALL_DIR="$SCRIPT_DIR"
@@ -47,10 +62,10 @@ if [[ "$IS_LOCAL" == "false" ]]; then
     if ! command -v git &>/dev/null; then
         [[ "$SILENT_MODE" == "false" ]] && echo -ne "\e[1;34m[*] Installing git...\e[0m"
         if [[ -d "/data/data/com.termux/files/usr/bin" ]]; then
-            pkg install git -y &>/dev/null
+            run_cmd pkg install git -y
         elif command -v apt &>/dev/null; then
-            sudo apt update -y &>/dev/null
-            sudo apt install git -y &>/dev/null
+            run_cmd sudo apt update -y
+            run_cmd sudo apt install git -y
         fi
         [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;32mDone.\e[0m"
     fi
@@ -69,9 +84,23 @@ if [[ "$IS_LOCAL" == "false" ]]; then
         fi
         rm -rf "$INSTALL_DIR"
     fi
+
+    # Channel switcher (first run)
+    if [[ "$CHANNEL_SET" == "false" && "$CONFIRM_ALL" == "false" ]]; then
+        echo
+        echo -e " \e[1;33m[?] Select update channel:\e[0m"
+        echo -e "   \e[1;36m1)\e[0m Stable  [default]"
+        echo -e "   \e[1;36m2)\e[0m Testing"
+        echo -ne " \e[1;33mChoice [1/2]: \e[0m"
+        read -r CH_SEL
+        [[ "$CH_SEL" == "2" || "$CH_SEL" == "testing" ]] && CHANNEL="testing"
+    fi
     
-    [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;34m[*] Cloning Promptify into $INSTALL_DIR...\e[0m"
-    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" || { echo "Clone failed."; exit 1; }
+    local clone_url="$STABLE_URL"
+    [[ "$CHANNEL" == "testing" ]] && clone_url="$TESTING_URL"
+
+    [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;34m[*] Cloning Promptify ($CHANNEL channel) into $INSTALL_DIR...\e[0m"
+    run_cmd git clone --depth 1 --branch "$CHANNEL_BRANCH" "$clone_url" "$INSTALL_DIR" || { echo "Clone failed."; exit 1; }
     
     cd "$INSTALL_DIR" || exit 1
     
@@ -79,6 +108,7 @@ if [[ "$IS_LOCAL" == "false" ]]; then
     ARGS=("--local")
     [[ "$CONFIRM_ALL" == "true" ]] && ARGS+=("--yes")
     [[ "$SILENT_MODE" == "true" ]] && ARGS+=("--silent")
+    ARGS+=("--channel" "$CHANNEL")
     
     exec bash "promptify.sh" "${ARGS[@]}"
     exit
@@ -95,13 +125,13 @@ if [[ "$IS_LOCAL" == "true" ]]; then
         [[ "$SILENT_MODE" == "false" ]] && echo -ne "\e[1;34m[*] Installing core dependencies for your system...\e[0m"
         
         case $PKG_MNGR in
-            pkg) pkg install ncurses-utils git -y &>/dev/null ;;
-            apt) $SUDO apt update -y &>/dev/null && $SUDO apt install ncurses-bin git -y &>/dev/null ;;
-            pacman) $SUDO pacman -Sy --noconfirm ncurses git &>/dev/null ;;
-            dnf) $SUDO dnf install -y ncurses git &>/dev/null ;;
-            zypper) $SUDO zypper install -y ncurses git &>/dev/null ;;
-            apk) $SUDO apk add ncurses git &>/dev/null ;;
-            brew) brew install ncurses git &>/dev/null ;;
+            pkg) run_cmd pkg install ncurses-utils git -y ;;
+            apt) run_cmd $SUDO apt update -y && run_cmd $SUDO apt install ncurses-bin git -y ;;
+            pacman) run_cmd $SUDO pacman -Sy --noconfirm ncurses git ;;
+            dnf) run_cmd $SUDO dnf install -y ncurses git ;;
+            zypper) run_cmd $SUDO zypper install -y ncurses git ;;
+            apk) run_cmd $SUDO apk add ncurses git ;;
+            brew) run_cmd brew install ncurses git ;;
         esac
         [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;32mDone.\e[0m"
     fi
@@ -166,6 +196,10 @@ CUR_THEME_BORDER="red"
 CUR_THEME_TAG="blue"
 # shellcheck disable=SC2034
 CUR_FONT="auto"
+# shellcheck disable=SC2034
+CUR_CAT_STYLE="full"
+# shellcheck disable=SC2034
+CUR_CHANNEL="stable"
 # shellcheck disable=SC2034
 BANNER_NAME="Promptify"
 # shellcheck disable=SC2034
@@ -236,7 +270,7 @@ while true; do
             check_setup || continue
             manage_dependencies; update_status 
             ;;
-        4) check_updates; update_status ;;
+        4) updates_menu; update_status ;;
         5) uninstall_promptify ;;
         6) 
             if confirm_action "Exit Promptify?" "y"; then

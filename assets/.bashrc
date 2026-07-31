@@ -60,10 +60,12 @@ alias fgrep='fgrep --color=auto'
 alias dir='dir --color=auto'
 alias vdir='vdir --color=auto -h'
 
+CAT_STYLE="full"
+[[ -f ~/.username ]] && grep -q "^CAT=" ~/.username 2>/dev/null && CAT_STYLE=$(grep "^CAT=" ~/.username | cut -d= -f2- | tr -d '"')
 if command -v bat &>/dev/null; then
-	alias cat='bat --style=full --paging=never --color=always'
+	alias cat="bat --style=$CAT_STYLE --paging=never --color=always"
 elif command -v batcat &>/dev/null; then
-	alias cat='batcat --style=full --paging=never --color=always'
+	alias cat="batcat --style=$CAT_STYLE --paging=never --color=always"
 fi
 
 if command -v eza &>/dev/null; then
