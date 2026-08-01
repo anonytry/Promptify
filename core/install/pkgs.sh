@@ -5,6 +5,7 @@ is_installed() {
 }
 
 install_dependencies() {
+    local skip_power="${1:-false}"
     echo -e "\033[1;34m[*] \033[32mUpdating package list...\033[0m"
     
     case $PKG_MNGR in
@@ -96,8 +97,11 @@ install_dependencies() {
         fi
     fi
 
-    # Optional Power Tools
-    if [[ "$CONFIRM_ALL" == "false" ]]; then
+    # Optional Power Tools (skipped when the caller already offers them, e.g.
+    # the Dependencies menu's separate "Others (Eza, Bat)" item)
+    if [[ "$skip_power" == "true" ]]; then
+        :
+    elif [[ "$CONFIRM_ALL" == "false" ]]; then
         local opts=()
         local pkgs=()
         
@@ -161,6 +165,9 @@ sync_assets() {
     echo -e "\033[1;34m[*] \033[32mSyncing UI Assets...\033[0m"
     local asset_dir="$INSTALL_DIR/assets"
     
+    # Bundled banner fonts (shadow + the extra lowercase-capable styles)
+    local bundled_fonts=("ASCII-Shadow.flf" "slant.flf" "banner.flf" "smpoison.flf" "graffiti.flf")
+    
     # Create asset dir
     mkdir -p "$SYS_DIR/assets"
 
@@ -169,7 +176,9 @@ sync_assets() {
     chmod 644 "$HOME/.promptify_font.flf" 2>/dev/null || true
 
     # Copy to System
-    cp "$asset_dir/ASCII-Shadow.flf" "$SYS_DIR/assets/" 2>/dev/null || true
+    for font_file in "${bundled_fonts[@]}"; do
+        cp "$asset_dir/$font_file" "$SYS_DIR/assets/" 2>/dev/null || true
+    done
     cp "$asset_dir/termux.properties" "$SYS_DIR/assets/" 2>/dev/null || true
     cp "$asset_dir/colors.properties" "$SYS_DIR/assets/" 2>/dev/null || true
     cp "$asset_dir/font.ttf" "$SYS_DIR/assets/" 2>/dev/null || true
@@ -199,8 +208,10 @@ sync_assets() {
             cp "$asset_dir/termux.properties" "$HOME/.termux/" 2>/dev/null || true
         fi
         
-        # Install figlet font
+        # Install figlet fonts
         mkdir -p "$PREFIX/share/figlet"
-        cp "$asset_dir/ASCII-Shadow.flf" "$PREFIX/share/figlet/" 2>/dev/null || true
+        for font_file in "${bundled_fonts[@]}"; do
+            cp "$asset_dir/$font_file" "$PREFIX/share/figlet/" 2>/dev/null || true
+        done
     fi
 }

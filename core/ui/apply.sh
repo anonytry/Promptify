@@ -6,6 +6,12 @@ create_global_binary() {
     [[ "$OS_TYPE" == "termux" ]] && bin_path="$PREFIX/bin/promptify"
     
     local target_script="$SYS_DIR/promptify.sh"
+
+    # Idempotent: if the wrapper already exists and points at the right target,
+    # skip entirely (no sudo prompt on every local apply).
+    if [[ -f "$bin_path" ]] && grep -qF "bash \"$target_script\"" "$bin_path" 2>/dev/null; then
+        return 0
+    fi
     
     # Wrapper script
     cat << EOF > promptify_wrapper
@@ -32,7 +38,7 @@ setup_ui() {
     local banner_name=$1
     local theme_border=${2:-"red"}
     local theme_tag=${3:-"blue"}
-    local font_pref=${4:-"auto"}
+    local font_pref=${4:-"random"}
     local show_banner=${5:-"true"}
     local cat_style="${CUR_CAT_STYLE:-full}"
 
@@ -43,6 +49,9 @@ setup_ui() {
     center_print "\e[1;34m[*] \e[32mConfiguring UI Components...\e[0m"
 
     local asset_dir="$INSTALL_DIR/assets"
+    
+    # Bundled banner fonts (shadow + the extra lowercase-capable styles)
+    local bundled_fonts=("ASCII-Shadow.flf" "slant.flf" "banner.flf" "smpoison.flf" "graffiti.flf")
     
     cp "$asset_dir/ASCII-Shadow.flf" "$HOME/.promptify_font.flf" || return 1
     chmod 644 "$HOME/.promptify_font.flf"
@@ -66,7 +75,9 @@ setup_ui() {
         fi
         
         mkdir -p "$PREFIX/share/figlet"
-        cp "$asset_dir/ASCII-Shadow.flf" "$PREFIX/share/figlet/" 2>/dev/null || true
+        for font_file in "${bundled_fonts[@]}"; do
+            cp "$asset_dir/$font_file" "$PREFIX/share/figlet/" 2>/dev/null || true
+        done
         termux-reload-settings 2>/dev/null || true
     else
         if command -v figlet &> /dev/null; then
@@ -78,7 +89,9 @@ setup_ui() {
              fi
 
              if [[ -d "$figlet_dir" ]]; then
-                 $SUDO cp "$asset_dir/ASCII-Shadow.flf" "$figlet_dir/" 2>/dev/null || true
+                 for font_file in "${bundled_fonts[@]}"; do
+                     $SUDO cp "$asset_dir/$font_file" "$figlet_dir/" 2>/dev/null || true
+                 done
              fi
         fi
 
@@ -89,8 +102,8 @@ setup_ui() {
     if [[ "$show_banner" == "true" ]]; then
         cp "$asset_dir/.draw" "$HOME/.draw" 2>/dev/null || true
         chmod +x "$HOME/.draw" 2>/dev/null || true
-        echo "NAME=\"$banner_name\"" > "$HOME/.username"
-        echo "FONT=\"$font_pref\"" >> "$HOME/.username"
+        set_username_pref NAME "$banner_name"
+        set_username_pref FONT "$font_pref"
     fi
 
     # Clean old config robustly
@@ -113,7 +126,9 @@ setup_ui() {
 
     # Persist assets
     mkdir -p "$SYS_DIR/assets"
-    cp "$INSTALL_DIR/assets/ASCII-Shadow.flf" "$SYS_DIR/assets/" 2>/dev/null
+    for font_file in "${bundled_fonts[@]}"; do
+        cp "$INSTALL_DIR/assets/$font_file" "$SYS_DIR/assets/" 2>/dev/null
+    done
     cp "$INSTALL_DIR/assets/termux.properties" "$SYS_DIR/assets/" 2>/dev/null
     cp "$INSTALL_DIR/assets/colors.properties" "$SYS_DIR/assets/" 2>/dev/null
     cp "$INSTALL_DIR/assets/font.ttf" "$SYS_DIR/assets/" 2>/dev/null

@@ -18,12 +18,7 @@ resolve_channel() {
 # Persist channel selection
 save_channel() {
     local chan="$1"
-    [[ -f "$HOME/.username" ]] || { echo "" > "$HOME/.username"; chmod 600 "$HOME/.username" 2>/dev/null; }
-    if grep -q "^CHANNEL=" "$HOME/.username"; then
-        sed_i "s/^CHANNEL=.*/CHANNEL=\"$chan\"/" "$HOME/.username"
-    else
-        echo "CHANNEL=\"$chan\"" >> "$HOME/.username"
-    fi
+    set_username_pref CHANNEL "$chan"
 }
 
 # Point origin remote at the active channel's repo/branch

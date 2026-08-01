@@ -10,22 +10,32 @@ draw_menu_item() {
     local type="${6:-radio}" # Radio or checkbox
     local is_selected="${7:-false}"
     local is_disabled="${8:-false}"
+    local status="${9:-}"
+    
+    # Status dot color map (green=installed, red=missing, amber=broken, dim green=outdated)
+    local dot=""
+    case "$status" in
+        "ok")       dot=" \e[1;32m●\e[0m" ;;
+        "missing")  dot=" \e[1;31m●\e[0m" ;;
+        "broken")   dot=" \e[1;33m●\e[0m" ;;
+        "outdated") dot=" \e[2;32m●\e[0m" ;;
+    esac
     
     local content="$label"
     if [[ "$type" == "checkbox" ]]; then
         if [[ "$is_selected" == "true" ]]; then
             # Selected checkbox [X]
             if [[ $index -eq $cursor ]]; then
-                printf '\033[2K\r%b \033[1;36m❯\033[0m [\033[1;32mX\033[0m] \033[1;36m%s\033[0m\n' "$spacer" "$label" >&2
+                printf '\033[2K\r%b \033[1;36m❯\033[0m [\033[1;32mX\033[0m] \033[1;36m%s\033[0m%b\n' "$spacer" "$label" "$dot" >&2
             else
-                printf '\033[2K\r%b   [\033[1;32mX\033[0m] \033[2;37m%s\033[0m\n' "$spacer" "$label" >&2
+                printf '\033[2K\r%b   [\033[1;32mX\033[0m] \033[2;37m%s\033[0m%b\n' "$spacer" "$label" "$dot" >&2
             fi
         else
             # Unselected checkbox [ ]
             if [[ $index -eq $cursor ]]; then
-                printf '\033[2K\r%b \033[1;36m❯\033[0m [ ] \033[1;36m%s\033[0m\n' "$spacer" "$label" >&2
+                printf '\033[2K\r%b \033[1;36m❯\033[0m [ ] \033[1;36m%s\033[0m%b\n' "$spacer" "$label" "$dot" >&2
             else
-                printf '\033[2K\r%b   [ ] \033[2;37m%s\033[0m\n' "$spacer" "$label" >&2
+                printf '\033[2K\r%b   [ ] \033[2;37m%s\033[0m%b\n' "$spacer" "$label" "$dot" >&2
             fi
         fi
         return
@@ -54,23 +64,37 @@ checkbox_menu() {
     shift
     local options=("$@")
     local selected=()
+    local status=()
     local cursor=0
     local confirmed=false
     local cancelled=false
 
     for i in "${!options[@]}"; do
-        if [[ "${options[i]}" == *"|selected" ]]; then
+        local opt="${options[i]}"
+        if [[ "$opt" == *"|selected" ]]; then
             selected[i]=true
-            options[i]="${options[i]%|selected}"
+            opt="${opt%|selected}"
         else
             selected[i]=false
         fi
+        # Optional status dot (installed / missing / broken / outdated)
+        status[i]=""
+        local st
+        for st in ok missing broken outdated; do
+            if [[ "$opt" == *"|$st" ]]; then
+                status[i]="$st"
+                opt="${opt%|$st}"
+            fi
+        done
+        options[i]="$opt"
     done
 
     tput civis >&2
     local bar_spacer=""
     local redraw=true
     local last_cursor=-1
+    local anchor_set=false
+    local after_full=false
     local old_trap
     old_trap=$(trap -p SIGWINCH)
     trap 'redraw=true; RESIZED=true' SIGWINCH
@@ -106,15 +130,29 @@ checkbox_menu() {
             
             # 3. Menu hints (Shortened to fit)
             center_print "\e[1;33m [ SPACE ]\e[0m Select | \e[1;33m[ ENTER ]\e[0m Start | \e[1;33m[ ESC ]\e[0m Back" >&2
+            # 3b. Status legend (only when any option carries a status dot)
+            local has_status=false
+            local st
+            for st in "${status[@]}"; do
+                [[ -n "$st" ]] && has_status=true
+            done
+            if [[ "$has_status" == "true" ]]; then
+                center_print "\e[1;32m●\e[0m Installed  \e[1;31m●\e[0m Missing  \e[1;33m●\e[0m Broken  \e[2;32m●\e[0m Outdated" >&2
+            fi
             draw_separator "$bar_w" "$bar_spacer" >&2
             printf '\n' >&2
-            tput sc >&2
             redraw=false
             last_cursor=-1
+            after_full=true
         fi
 
         if [[ $cursor -ne $last_cursor ]]; then
-            tput rc >&2
+            # Anchor back to the options block start using relative movement,
+            # which stays correct even when the screen scrolled (menu taller than terminal).
+            if [[ "$anchor_set" == true && "$after_full" == false ]]; then
+                tput rc >&2
+                tput cuu "${#options[@]}" >&2
+            fi
             tput ed >&2
 
             local opt_block_w=$((max_opt_w + 7))
@@ -122,9 +160,12 @@ checkbox_menu() {
             opt_spacer=$(get_spacer "$opt_block_w")
 
             for i in "${!options[@]}"; do
-                draw_menu_item "${options[i]}" "$i" "$cursor" -1 "$opt_spacer" "checkbox" "${selected[i]}"
+                draw_menu_item "${options[i]}" "$i" "$cursor" -1 "$opt_spacer" "checkbox" "${selected[i]}" "" "${status[i]}"
             done
+            tput sc >&2
+            anchor_set=true
             last_cursor=$cursor
+            after_full=false
         fi
         
         if ! IFS= read -rsn1 -r key; then
@@ -142,11 +183,9 @@ checkbox_menu() {
                 case "$key_ext" in
                     '[A'|'OA') 
                         ((cursor--)); [[ $cursor -lt 0 ]] && cursor=$((${#options[@]}-1)) 
-                        [[ "$p_type" == "header" ]] && redraw=true
                         ;;
                     '[B'|'OB') 
                         ((cursor++)); [[ $cursor -ge ${#options[@]} ]] && cursor=0 
-                        [[ "$p_type" == "header" ]] && redraw=true
                         ;;
                 esac
                 ;;
@@ -207,6 +246,9 @@ radio_menu() {
     local bar_spacer=""
     local redraw=true
     local last_cursor=-1
+    local anchor_set=false
+    local after_full=false
+    local last_footer_lines=0
     local old_trap
     old_trap=$(trap -p SIGWINCH)
     trap 'redraw=true; RESIZED=true' SIGWINCH
@@ -260,14 +302,21 @@ radio_menu() {
             draw_separator "$bar_w" "$bar_spacer" >&2
             printf '\n' >&2
 
-            tput sc >&2
             redraw=false
             last_cursor=-1 # Force full update of lower section
+            after_full=true
         fi
 
         # Only redraw the options and preview if the cursor changed or a full redraw was forced
         if [[ $cursor -ne $last_cursor ]]; then
-            tput rc >&2
+            # The anchor is saved at the very end of this block (after the footer
+            # preview), so nothing is drawn after it and tput rc is always exact,
+            # even when the menu is taller than the terminal and scrolling occurs.
+            # Going up by (options + footer lines) lands exactly on the first option.
+            if [[ "$anchor_set" == true && "$after_full" == false ]]; then
+                tput rc >&2
+                tput cuu $(( ${#options[@]} + last_footer_lines )) >&2
+            fi
             tput ed >&2
 
             local opt_block_w=$((max_opt_w + 5))
@@ -277,16 +326,29 @@ radio_menu() {
             for i in "${!options[@]}"; do
                 draw_menu_item "${options[i]}" "$i" "$cursor" "$active_idx" "$opt_spacer" "radio" "false" "${disabled[i]}"
             done
-            
+
+            last_footer_lines=0
             if [[ "$p_type" == "footer" && "${options[cursor]}" != "Back" ]]; then
                 printf '\n' >&2
                 draw_separator "$bar_w" "$bar_spacer" >&2
                 center_print "\033[1;35mPREVIEW\033[0m" >&2
                 draw_separator "$bar_w" "$bar_spacer" >&2
                 printf '\n' >&2
-                $preview_cmd "$cursor" "$bar_spacer" >&2
+                # Capture the preview to know exactly how many lines it occupies
+                # (needed for the relative cuu anchor on the next redraw).
+                local prev_out
+                prev_out=$($preview_cmd "$cursor" "$bar_spacer" 2>&1)
+                if [[ -n "$prev_out" ]]; then
+                    printf '%s\n' "$prev_out" >&2
+                    last_footer_lines=$(( 5 + $(printf '%s\n' "$prev_out" | wc -l) ))
+                else
+                    last_footer_lines=5
+                fi
             fi
+            tput sc >&2
+            anchor_set=true
             last_cursor=$cursor
+            after_full=false
         fi
 
         if ! IFS= read -rsn1 -r key; then

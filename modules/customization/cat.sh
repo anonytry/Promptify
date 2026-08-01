@@ -16,7 +16,7 @@ manage_cat() {
         "plain") cur_idx=3 ;;
     esac
 
-    CAT_CHOICE=$(radio_menu "Cat Display Style" "" "" "$cur_idx" "$cur_idx" \
+    CAT_CHOICE=$(radio_menu "Cat Display Style" "" "cat_preview" "$cur_idx" "$cur_idx" \
         "Full (Filename + Lines + Grid)" \
         "Filename Only" \
         "Lines Only (Numbers)" \
@@ -37,15 +37,7 @@ manage_cat() {
         # shellcheck disable=SC2034
         CUR_CAT_STYLE="$style"
 
-        if [[ -f "$HOME/.username" ]]; then
-            if grep -q "^CAT=" "$HOME/.username"; then
-                sed_i "s/^CAT=.*/CAT=\"$style\"/" "$HOME/.username"
-            else
-                echo "CAT=\"$style\"" >> "$HOME/.username"
-            fi
-        else
-            echo "CAT=\"$style\"" > "$HOME/.username"
-        fi
+        set_username_pref CAT "$style"
 
         load_prefs
         refresh_ui

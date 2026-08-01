@@ -34,7 +34,13 @@ exit_script() {
     exit 0
 }
 
-# Cleanup banner files
+# Cleanup banner files (keeps other prefs like CAT/CHANNEL in ~/.username)
 remove_banner_files() {
-    rm -f "$HOME/.draw" "$HOME/.username"
+    rm -f "$HOME/.draw"
+    if [[ -f "$HOME/.username" ]]; then
+        sed_i '/^NAME=/d; /^FONT=/d' "$HOME/.username" 2>/dev/null
+        if [[ ! -s "$HOME/.username" ]] || ! grep -qE '^[A-Z_]+=' "$HOME/.username"; then
+            rm -f "$HOME/.username"
+        fi
+    fi
 }

@@ -17,11 +17,12 @@ guided_setup() {
             echo -e "\n\033[1;31m[!] Setup failed or interrupted. Rolling back...\033[0m"
             [[ -f "$zshrc_backup" ]] && mv "$zshrc_backup" "$HOME/.zshrc"
         fi
-        trap - ERR SIGINT SIGTERM
+        trap - SIGINT SIGTERM
         tput cnorm
         return 1
     }
-    trap 'rollback_setup' ERR SIGINT SIGTERM
+    # Roll back only on user interruption, not on every non-zero command.
+    trap 'rollback_setup' SIGINT SIGTERM
 
     [[ -f "$HOME/.zshrc" && ! -f "$zshrc_backup" ]] && cp "$HOME/.zshrc" "$zshrc_backup"
 
@@ -56,24 +57,12 @@ guided_setup() {
     sync_assets
     echo
 
-    # Update Channel selection
-    if [[ "$CHANNEL_SET" == "true" ]]; then
-        save_channel "$CHANNEL"
-        ensure_channel_remote "$CHANNEL"
-        center_print "\033[1;32m[✔] Channel: $CHANNEL\033[0m"
-    else
-        center_print "\033[1;33m[*] \033[0mSelecting update channel..."
-        local chan_def_idx=0
-        [[ "$CUR_CHANNEL" == "testing" ]] && chan_def_idx=1
-        local chan_choice
-        chan_choice=$(radio_menu "Update Channel" "" "" "$chan_def_idx" "$chan_def_idx" \
-            "Stable" \
-            "Testing")
-        [[ "$chan_choice" == "1" ]] && CUR_CHANNEL="testing" || CUR_CHANNEL="stable"
-        save_channel "$CUR_CHANNEL"
-        ensure_channel_remote "$CUR_CHANNEL"
-        center_print "\033[1;32m[✔] Channel: $CUR_CHANNEL\033[0m"
-    fi
+    # Update Channel: derived from the cloned repo's origin (no prompt needed).
+    # Users can switch channels anytime from the Updates menu.
+    CUR_CHANNEL="$(resolve_channel)"
+    save_channel "$CUR_CHANNEL"
+    ensure_channel_remote "$CUR_CHANNEL"
+    center_print "\033[1;32m[✔] Channel: $CUR_CHANNEL\033[0m"
     echo
 
     center_print "\033[1;32m[✔] Environment Ready.\033[0m"
@@ -124,7 +113,7 @@ guided_setup() {
     center_print "\033[1;33m[*] Location: $SYS_DIR\033[0m"
     
     setup_success=true
-    trap - ERR SIGINT SIGTERM
+    trap - SIGINT SIGTERM
     tput cnorm
     restart_shell
 }

@@ -8,12 +8,12 @@ font_preview() {
     [[ "$mode" == "type" ]] && { echo "header"; return; }
     
     local font
-    if [[ $idx -ge 0 && $idx -le 2 ]]; then
+    if [[ $idx -ge 0 && $idx -le 6 ]]; then
         font=$(get_font_name "$idx")
     else
         # When on 'Back' or any other index, show current active style
         font="$CUR_FONT"
-        [[ -z "$font" ]] && font="auto"
+        [[ -z "$font" ]] && font="random"
     fi
 
     # Force 'Promptify' fallback for visual completeness in previews
@@ -37,6 +37,48 @@ current_banner_preview() {
     [[ -z "$preview_name" || "$preview_name" == " " ]] && preview_name="Promptify"
 
     bash "$INSTALL_DIR/assets/.draw" "$preview_name" "--no-sig" "--no-clear" "--no-civis" "--font" "$font_arg" "--preview"
+}
+
+# Simulated bat output preview for the Cat Display Style menu. Renders a
+# small sample file the way the selected style would display it, using the
+# active theme colors. Footer-type preview (drawn under the menu options).
+cat_preview() {
+    local idx="$1"
+    local spacer="$2"
+    local mode="$3"
+
+    [[ "$mode" == "type" ]] && { echo "footer"; return; }
+    [[ $idx -gt 3 ]] && return
+
+    local reset="${ANSI_COLORS[reset]}"
+    local c_border="${ANSI_COLORS[$CUR_THEME_BORDER]:-\e[1;34m}"
+    local c_tag="${ANSI_COLORS[$CUR_THEME_TAG]:-\e[1;36m}"
+    local c_num="\e[1;90m"
+    local c_code="\e[0m"
+
+    local lines=('#!/bin/bash' 'echo "Hello, Promptify!"' 'ls -la')
+    local f_name="sample.sh"
+
+    case "$idx" in
+        0) # Full (Filename + Lines + Grid)
+            printf "%b${c_border}── %b${c_tag}%s%b${c_border} ──%b\n" "$spacer" "$reset" "$f_name" "$reset" "$reset"
+            printf "%b${c_border}─────────────%b\n" "$spacer" "$reset"
+            ;;
+        1) # Filename Only
+            printf "%b${c_border}── %b${c_tag}%s%b${c_border} ──%b\n" "$spacer" "$reset" "$f_name" "$reset" "$reset"
+            ;;
+        2|3) : ;;
+    esac
+
+    local i
+    for i in "${!lines[@]}"; do
+        local n=$((i + 1))
+        if [[ "$idx" -le 2 ]]; then
+            printf "%b${c_num}%2d │%b %s\n" "$spacer" "$n" "$reset" "${lines[i]}"
+        else
+            printf "%b%s\n" "$spacer" "${lines[i]}"
+        fi
+    done
 }
 
 theme_preview() {

@@ -112,6 +112,19 @@ sed_i() {
     fi
 }
 
+# Upsert a KEY="value" line in ~/.username without clobbering other keys.
+# Preserves unrelated preferences (e.g. CAT, CHANNEL) across updates.
+set_username_pref() {
+    local key="$1"
+    local value="$2"
+    [[ -f "$HOME/.username" ]] || { echo "" > "$HOME/.username"; chmod 600 "$HOME/.username" 2>/dev/null; }
+    if grep -q "^$key=" "$HOME/.username" 2>/dev/null; then
+        sed_i "s|^$key=.*|$key=\"$value\"|" "$HOME/.username"
+    else
+        echo "$key=\"$value\"" >> "$HOME/.username"
+    fi
+}
+
 # Box line drawing
 # Arguments: content, width, char, color, spacer, align
 draw_box_line() {

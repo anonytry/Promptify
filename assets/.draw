@@ -52,24 +52,48 @@ fi
 KERN=""
 [[ ${#NAME} -lt 7 ]] && KERN="-k"
 
+# Pick a random style from the full pool (fresh on every banner draw)
+pick_random_font() {
+    local pool=("$F_SHADOW" "standard" "slant" "banner" "smpoison" "graffiti")
+    echo "${pool[$((RANDOM % ${#pool[@]}))]}"
+}
+
 if [[ -n "$FORCE_FONT" ]]; then
     case "$FORCE_FONT" in
-        "shadow") USE_FONT="$F_SHADOW" ;;
-        "big")    USE_FONT="big"; KERN="" ;;
-        "std")    USE_FONT="standard"; KERN="" ;;
-        *)        USE_FONT="$F_SHADOW" ;;
+        "shadow")   USE_FONT="$F_SHADOW" ;;
+        "big")      USE_FONT="big"; KERN="" ;;
+        "std")      USE_FONT="standard"; KERN="" ;;
+        "slant")    USE_FONT="slant"; KERN="" ;;
+        "banner")   USE_FONT="banner"; KERN="" ;;
+        "smpoison") USE_FONT="smpoison"; KERN="" ;;
+        "graffiti") USE_FONT="graffiti"; KERN="" ;;
+        "random")   USE_FONT="$(pick_random_font)" ;;
+        *)          USE_FONT="$F_SHADOW" ;;
     esac
 else
     if [[ -f ~/.username ]]; then
         PREF_FONT=$(grep "^FONT=" ~/.username | cut -d= -f2- | tr -d '"')
     fi
     case "${PREF_FONT:-auto}" in
-        "shadow") USE_FONT="$F_SHADOW" ;;
-        "big")    USE_FONT="big"; KERN="" ;;
-        "std")    USE_FONT="standard"; KERN="" ;;
-        *)        USE_FONT="$F_SHADOW" ;;
+        "shadow")   USE_FONT="$F_SHADOW" ;;
+        "big")      USE_FONT="big"; KERN="" ;;
+        "std")      USE_FONT="standard"; KERN="" ;;
+        "slant")    USE_FONT="slant"; KERN="" ;;
+        "banner")   USE_FONT="banner"; KERN="" ;;
+        "smpoison") USE_FONT="smpoison"; KERN="" ;;
+        "graffiti") USE_FONT="graffiti"; KERN="" ;;
+        *)          USE_FONT="$(pick_random_font)"; KERN="" ;;
     esac
 fi
+
+# FONT_DESCENT tracks figlet's descent layout so blank trailing rows that
+# carry no real glyph (descent-0 fonts like shadow) can be trimmed back to
+# the old centered look while other fonts keep their constant box height.
+case "$USE_FONT" in
+    "$F_SHADOW")      FONT_DESCENT=0 ;;
+    "big"|"smpoison") FONT_DESCENT=2 ;;
+    *)                FONT_DESCENT=1 ;;
+esac
 
 # Capture figlet output and check fit (V1 Core Logic)
 check_fit() {
@@ -91,6 +115,7 @@ if ! check_fit "$KERN" "$USE_FONT" "$NAME" "$TERM_W"; then
     if [[ "$USE_FONT" != "standard" ]]; then
         USE_FONT="standard"
         KERN=""
+        FONT_DESCENT=1
         mapfile -t RAW_LINES < <(figlet -f "standard" -w 1000 "$NAME" 2>/dev/null)
     fi
 fi
@@ -106,15 +131,26 @@ for line in "${RAW_LINES[@]}"; do
 done
 [[ $MIN_LEAD -eq 999 ]] && MIN_LEAD=0
 
-# Tighten lines
+# Tighten lines: strip shared leading space and trailing whitespace, but KEEP
+# every figlet layout row. figlet always emits exactly `height` rows per font,
+# so keeping them all makes the box height constant per font — words with or
+# without descender letters ('g','j','p','y','f') render identically tall.
 FINAL_LINES=()
 for line in "${RAW_LINES[@]}"; do
-    [[ -z "${line// /}" ]] && continue
     line="${line:$MIN_LEAD}"
     line="${line%"${line##*[![:space:]]}"}"
     FINAL_LINES+=("$line")
     [[ ${#line} -gt $MAX_LINE_W ]] && MAX_LINE_W=${#line}
 done
+
+# Descent-0 fonts (e.g. shadow) always emit a trailing blank layout row with
+# no glyph meaning; trim it so the glyph block regains the old centered look.
+if [[ "$FONT_DESCENT" == "0" ]]; then
+    while [[ ${#FINAL_LINES[@]} -gt 0 ]] && [[ -z "${FINAL_LINES[-1]// /}" ]]; do
+        unset 'FINAL_LINES[-1]'
+    done
+    FINAL_LINES=("${FINAL_LINES[@]}")
+fi
 
 # 3. Box Dimensions (RESTORED V1 DYNAMIC SIZING + EXTRA BREATHING ROOM)
 # Increase base padding to +14 for better aesthetics
@@ -141,6 +177,18 @@ if [[ $WIDTH -lt $((MAX_LINE_W + 4)) ]]; then
 fi
 
 [[ $WIDTH -lt 40 ]] && WIDTH=40
+
+# Narrow screens: fall back to a compact centered line instead of a broken,
+# wrapped box. Previews are exempt so font previews always show the full box.
+if [[ "$IS_PREVIEW" == "false" && $WIDTH -gt $((TERM_W - 2)) ]]; then
+    CLEAN_LEN=$(( ${#NAME} + 8 ))
+    OFFSET=$(( (TERM_W - CLEAN_LEN) / 2 ))
+    [[ $OFFSET -lt 0 ]] && OFFSET=0
+    printf "\r%${OFFSET}s\033[1;35m--- %s ---\033[0m\n" "" "$NAME" >&2
+    printf "\n" >&2
+    [[ "$DO_CIVIS" == "true" ]] && NORM
+    exit 0
+fi
 
 # Padding to center content inside box (Balanced Centering)
 # Add 1 before division to round up, which often looks more centered on terminals

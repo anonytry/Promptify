@@ -42,24 +42,36 @@ input_prompt() {
     echo >&2
     echo >&2
 
+    # Save any existing ESC binding so we can restore it (don't clobber the
+    # user's readline config), then bind ESC to cancel this prompt.
+    local old_esc_bind
+    old_esc_bind=$(bind -p 2>/dev/null | grep -F '"\e":' | head -n1 || true)
     bind '"\e": "CANCEL_INPUT\n"' 2>/dev/null
+
+    restore_esc_bind() {
+        if [[ -n "$old_esc_bind" ]]; then
+            bind "$old_esc_bind" 2>/dev/null
+        else
+            bind -r '"\e"' 2>/dev/null
+        fi
+    }
 
     while true; do
         if ! read -ep " ❯ $label: " result; then
+            restore_esc_bind
             echo "CANCELLED"
-            bind -r '"\e"' 2>/dev/null
             return
         fi
         
         if [[ "$result" == "CANCEL_INPUT" ]]; then
-             echo "CANCELLED"
-             bind -r '"\e"' 2>/dev/null
-             return
+            restore_esc_bind
+            echo "CANCELLED"
+            return
         fi
 
         if [[ "$allow_cancel" == "true" && ( "$result" == "c" || "$result" == "C" || "$result" == "cancel" ) ]]; then
+            restore_esc_bind
             echo "CANCELLED"
-            bind -r '"\e"' 2>/dev/null
             return
         fi
 
@@ -67,7 +79,7 @@ input_prompt() {
         [[ -n "$result" ]] && break
     done
     
-    bind -r '"\e"' 2>/dev/null
+    restore_esc_bind
 
     if [[ -n "$max_len" && ${#result} -gt $max_len ]]; then
         result="${result:0:$max_len}"

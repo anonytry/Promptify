@@ -12,7 +12,7 @@ load_prefs() {
         CUR_CAT_STYLE=$(grep "^CAT=" ~/.username | cut -d= -f2- | sed 's/^"//;s/"$//')
         CUR_CHANNEL=$(grep "^CHANNEL=" ~/.username | cut -d= -f2- | sed 's/^"//;s/"$//')
         [[ -z "$BANNER_NAME" ]] && BANNER_NAME="Promptify"
-        [[ -z "$CUR_FONT" ]] && CUR_FONT="auto"
+        [[ -z "$CUR_FONT" ]] && CUR_FONT="random"
         [[ -z "$CUR_CAT_STYLE" ]] && CUR_CAT_STYLE="full"
         [[ -z "$CUR_CHANNEL" ]] && CUR_CHANNEL=$(resolve_channel)
     fi

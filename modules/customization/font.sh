@@ -8,8 +8,12 @@ manage_font() {
         "$(get_font_label 0)" \
         "$(get_font_label 1)" \
         "$(get_font_label 2)" \
+        "$(get_font_label 3)" \
+        "$(get_font_label 4)" \
+        "$(get_font_label 5)" \
+        "$(get_font_label 6)" \
         "Back")
-    [[ "$FONT_CHOICE" == "CANCELLED" || "$FONT_CHOICE" == 3 ]] && return
+    [[ "$FONT_CHOICE" == "CANCELLED" || "$FONT_CHOICE" == 7 ]] && return
 
     local selected_font
     selected_font=$(get_font_name "$FONT_CHOICE")
@@ -19,8 +23,8 @@ manage_font() {
         # shellcheck disable=SC2034
         CUR_FONT="$selected_font"
         
-        echo "NAME=\"$BANNER_NAME\"" > "$HOME/.username"
-        echo "FONT=\"$CUR_FONT\"" >> "$HOME/.username"
+        set_username_pref NAME "$BANNER_NAME"
+        set_username_pref FONT "$CUR_FONT"
         
         load_prefs
         calculate_ui_width

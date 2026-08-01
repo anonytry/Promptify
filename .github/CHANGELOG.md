@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-08-01
+
+### Added
+- **New Banner Fonts**: Slant, Banner, Poison, and Graffiti styles bundled as assets — all with proper lowercase letter support (Bubble removed).
+- **Random Font Option**: The default banner option now picks a random style from Shadow/Simple/Slant/Banner/Poison/Graffiti on every terminal open.
+- **Minimal Banner Box**: Removed the extra vertical padding rows so the banner box hugs the glyphs for a clean, compact look.
+- **Live Cat Preview**: The Cat Display Style menu now renders a live preview of the highlighted style (Filename Only, Numbers Only, Plain) as you navigate.
+- **Dependencies Status Dots**: The Dependencies menu shows unticked options with live status dots — ● Installed (green), ● Missing (red), ● Broken (amber), ● Outdated (dim green) — plus an on-screen legend.
+- **Update Channel Auto-Detect**: The setup wizard no longer prompts for a channel; it derives the channel from the cloned repo's origin.
+
+### Fixed
+- **Random Shadow Alignment**: Choosing Random could pick Shadow without trimming its blank trailing row, shifting the banner up on terminal open. Descent is now derived from the selected font on every path (force, preference, and random).
+- **Cat/Channel Prefs Preserved**: `~/.username` is now upserted key-by-key instead of rewritten, so operations like banner uninstall keep unrelated prefs (CAT, CHANNEL) intact.
+- **ESC Cancels Input Cleanly**: Pressing ESC now cancels text prompts and restores your original readline ESC binding instead of clobbering it.
+- **Rollback Only on Interrupt**: The setup wizard rolls back only on user interruption (SIGINT/SIGTERM), not on every failed sub-command.
+
+---
+
 ## [1.2.0] - 2026-07-31
 
 ### Added
