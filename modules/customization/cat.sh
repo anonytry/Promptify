@@ -3,7 +3,7 @@
 manage_cat() {
     if ! is_installed bat && ! is_installed batcat; then
         center_print "\e[1;31m[!] bat is not installed.\e[0m"
-        center_print "\e[1;33m[*] Install it from Dependencies > Others (Eza, Bat).\e[0m"
+        center_print "\e[1;33m[*] Install it from Dependencies > Others.\e[0m"
         press_enter
         return
     fi
@@ -17,10 +17,10 @@ manage_cat() {
     esac
 
     CAT_CHOICE=$(radio_menu "Cat Display Style" "" "cat_preview" "$cur_idx" "$cur_idx" \
-        "Full (Filename + Lines + Grid)" \
+        "Full" \
         "Filename Only" \
-        "Lines Only (Numbers)" \
-        "Plain (No Decoration)" \
+        "Numbers Only" \
+        "Plain" \
         "Back")
 
     [[ "$CAT_CHOICE" == "CANCELLED" || "$CAT_CHOICE" == 4 ]] && return

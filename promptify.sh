@@ -102,15 +102,13 @@ if [[ "$IS_LOCAL" == "false" ]]; then
     [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;34m[*] Cloning Promptify ($CHANNEL channel) into $INSTALL_DIR...\e[0m"
     run_cmd git clone --depth 1 --branch "$CHANNEL_BRANCH" "$clone_url" "$INSTALL_DIR" || { echo "Clone failed."; exit 1; }
     
-    cd "$INSTALL_DIR" || exit 1
-    
     # Pass flags to local exec
     ARGS=("--local")
     [[ "$CONFIRM_ALL" == "true" ]] && ARGS+=("--yes")
     [[ "$SILENT_MODE" == "true" ]] && ARGS+=("--silent")
     ARGS+=("--channel" "$CHANNEL")
     
-    exec bash "promptify.sh" "${ARGS[@]}"
+    exec bash "$INSTALL_DIR/promptify.sh" "${ARGS[@]}"
     exit
 fi
 

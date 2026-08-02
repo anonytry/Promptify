@@ -3,11 +3,11 @@
 manage_theme() {
     local active_t="${CUR_THEME_IDX:-0}"
     THEME_CHOICE=$(radio_menu "Prompt Theme Style" "" "theme_preview" "$active_t" "$active_t" \
-        "Neon (Cyan/Blue)" \
-        "Dracula (Magenta/Cyan)" \
-        "Matrix (Green/Green)" \
-        "Gold (Yellow/White)" \
-        "Classic (Red/Blue)" \
+        "Neon" \
+        "Dracula" \
+        "Matrix" \
+        "Gold" \
+        "Classic" \
         "Back")
 
     [[ "$THEME_CHOICE" == "CANCELLED" || "$THEME_CHOICE" == 5 ]] && return

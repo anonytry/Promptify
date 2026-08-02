@@ -4,7 +4,7 @@ manage_customization() {
     while true; do
         local cat_opt="Cat Display Style"
         if ! is_installed bat && ! is_installed batcat; then
-            cat_opt="Cat Display Style (bat not installed)|disabled"
+            cat_opt="Cat Display Style (needs bat)|disabled"
         fi
 
         CUST_CHOICE=$(radio_menu "Customization Menu" "" "" 0 -1 \

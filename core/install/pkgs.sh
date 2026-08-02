@@ -106,11 +106,11 @@ install_dependencies() {
         local pkgs=()
         
         if ! is_installed eza && ! is_installed exa; then
-            opts+=("Eza (Modern LS replacement)|selected")
+            opts+=("Eza|selected")
             pkgs+=("eza")
         fi
         if ! is_installed bat && ! is_installed batcat; then
-            opts+=("Bat (Modern CAT with syntax highlighting)|selected")
+            opts+=("Bat|selected")
             pkgs+=("bat")
         fi
 

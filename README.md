@@ -51,21 +51,9 @@ You can change your look anytime by running `promptify`:
 - **Switch Fonts**: Choose between Random, Shadow, Simple, Slant, Banner, Poison, or Graffiti styles (Slant, Banner, Poison, and Graffiti support lowercase letters).
 - **Prompt Themes**: Switch between Neon, Matrix, Dracula, and more.
 
-## What's New in v1.3.0?
+## Changelog
 
-- **New Banner Fonts**: Slant, Banner, Poison, and Graffiti styles bundled as assets — all with lowercase support (Bubble removed).
-- **Random Font Option**: The default option now picks a random banner style on every terminal open for a fresh look each time.
-- **Minimal Banner Box**: Removed the extra vertical padding rows so the banner box hugs the glyphs for a clean, compact look.
-
-## What's New in v1.2.0?
-
-- **Cat Style**: Professional code highlighting for the `cat` command with style presets.
-- **Power Tools**: Optional Eza (modern `ls`) and Bat (modern `cat`) installs.
-- **Nerd Fonts**: Auto-installed on desktop terminals for crisp glyphs.
-- **Live Output**: Real-time progress while installing and applying.
-- **Disabled Items**: Unavailable options now show grayed-out in menus.
-
-[See the full Changelog here](.github/CHANGELOG.md)
+Want to see what's new in the latest version? [Read the full Changelog](.github/CHANGELOG.md)
 
 ## Acknowledgments & Credits
 

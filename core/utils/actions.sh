@@ -15,17 +15,12 @@ refresh_ui() {
     setup_ui "$BANNER_NAME" "$CUR_THEME_BORDER" "$CUR_THEME_TAG" "$CUR_FONT" "$USE_BANNER"
 }
 
-# Restart shell
+# Notify changes applied (never exec a nested shell)
 restart_shell() {
     echo
-    if confirm_action "Restart Zsh now to apply changes?" "y"; then
-        echo -e "\e[1;34m[*] \e[32mRestarting shell...\e[0m"
-        sleep 0.5
-        exec zsh
-    else
-        echo -e "\e[1;33m[!] Changes will take effect in new sessions or by running: source ~/.zshrc\e[0m"
-        press_enter
-    fi
+    echo -e "\e[1;32m[✔] Changes applied!\e[0m"
+    echo -e "\e[1;33m[*] Start a new terminal session (or run: source ~/.zshrc) to see them.\e[0m"
+    press_enter
 }
 
 # Exit script cleanup

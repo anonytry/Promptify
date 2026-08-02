@@ -73,10 +73,10 @@ cat_preview() {
     local i
     for i in "${!lines[@]}"; do
         local n=$((i + 1))
-        if [[ "$idx" -le 2 ]]; then
-            printf "%b${c_num}%2d │%b %s\n" "$spacer" "$n" "$reset" "${lines[i]}"
-        else
+        if [[ "$idx" == "1" || "$idx" == "3" ]]; then
             printf "%b%s\n" "$spacer" "${lines[i]}"
+        else
+            printf "%b${c_num}%2d │%b %s\n" "$spacer" "$n" "$reset" "${lines[i]}"
         fi
     done
 }

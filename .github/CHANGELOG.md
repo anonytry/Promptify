@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-08-02
+
+### Fixed
+- **Wrong Directory After Exit**: Running `promptify`/`pty` and exiting no longer leaves you stuck in the first clone directory. `restart_shell` no longer spawns a nested shell via `exec zsh`, bootstrap no longer `cd`s into the clone directory, and update checks run without changing the working directory.
+- **Cat Preview (Filename Only)**: The "Filename Only" preview no longer shows line numbers — it now renders just the filename header plus content, matching real `bat` output.
+- **Cringy Menu Labels**: Removed clunky parenthetical words from menu items (Cat styles, Themes, Dependencies, Power Tools, Uninstall) for clean, minimal labels.
+
+---
+
 ## [1.3.0] - 2026-08-01
 
 ### Added

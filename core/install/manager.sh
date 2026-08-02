@@ -86,7 +86,7 @@ manage_dependencies() {
     local actions=()
 
     # 1. Build options with live status dots (boxes always start unticked)
-    opts+=("Base Packages (git, zsh, etc.)|$(dep_status base)")
+    opts+=("Base Packages|$(dep_status base)")
     actions+=("install_dependencies skip_power")
 
     opts+=("Oh-My-Zsh Framework|$(dep_status omz)")
@@ -98,7 +98,7 @@ manage_dependencies() {
     opts+=("Promptify UI Assets|$(dep_status assets)")
     actions+=(sync_assets)
 
-    opts+=("Others (Eza, Bat)|$(dep_status power)")
+    opts+=("Others|$(dep_status power)")
     actions+=(install_power_tools)
 
     # 2. Run checkbox menu

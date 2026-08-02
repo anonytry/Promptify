@@ -28,7 +28,7 @@ uninstall_promptify() {
 
     # Only show Termux UI option if on Termux
     if [[ "$OS_TYPE" == "termux" ]]; then
-        opts+=("Revert Termux UI (Font/Colors)$ui_sel")
+        opts+=("Revert Termux UI$ui_sel")
         actions+=(clean_ui_settings)
     fi
 
