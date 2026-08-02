@@ -11,6 +11,12 @@
 .draw
 .promptify_font.flf
 
+# Runtime state (written into the installed repo — never track or block updates)
+.install-state
+figlet-backups/
+oh-my-zsh/
+plugins/
+
 # OS generated files
 .DS_Store
 .directory

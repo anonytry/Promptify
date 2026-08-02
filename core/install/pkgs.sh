@@ -105,7 +105,10 @@ install_dependencies() {
         if [[ ${#opts[@]} -gt 0 ]]; then
             echo -e "\n\e[1;34m[*] Optional Power Tools:\e[0m"
             local choices
-            choices=$(checkbox_menu "Select Power Tools to Install" "${opts[@]}")
+            choices=$(checkbox_menu "Select Power Tools to Install" \
+"Recommended: install both. Eza & Bat make 'ls' and 'cat' look nicer (icons, colors).
+Skip for now? You can add them anytime later from Dependencies → Others." \
+"${opts[@]}")
             if [[ "$choices" != "CANCELLED" ]]; then
                 for idx in $choices; do
                     install_single_pkg "${pkgs[$idx]}"
@@ -206,8 +209,11 @@ sync_assets() {
         
         # Install figlet fonts
         mkdir -p "$PREFIX/share/figlet"
+        backup_bundled_figlet_fonts
         for font_file in "${bundled_fonts[@]}"; do
             cp "$asset_dir/$font_file" "$PREFIX/share/figlet/" 2>/dev/null || true
         done
     fi
+
+    record_install_state
 }

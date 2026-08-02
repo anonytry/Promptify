@@ -58,7 +58,12 @@ check_path() {
 }
 
 is_promptify_installed() {
-    [[ -f "$HOME/.zshrc" ]] && grep -q "# --- Promptify Config ---" "$HOME/.zshrc" 2>/dev/null
+    # Installed if the profile marker is present OR the install dir still exists
+    # (the latter catches partial uninstalls where only the marker was stripped).
+    if [[ -f "$HOME/.zshrc" ]] && grep -q "# --- Promptify Config ---" "$HOME/.zshrc" 2>/dev/null; then
+        return 0
+    fi
+    [[ -d "$SYS_DIR" ]]
 }
 
 check_setup() {

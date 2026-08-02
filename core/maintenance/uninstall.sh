@@ -7,37 +7,42 @@ uninstall_promptify() {
         return
     fi
 
+    # Load what install recorded so uninstall can reverse it exactly
+    read_install_state
+
     # 1. Auto-detect components for checkboxes
     local prof_sel="" && is_promptify_installed && prof_sel="|selected"
     local sys_sel="" && [[ -d "$SYS_DIR" ]] && sys_sel="|selected"
+
+    # UI cleanup: Termux UI files or bundled figlet fonts present, or a desktop
+    # font was applied.
     local ui_sel=""
-    if [[ "$OS_TYPE" == "termux" ]]; then
-        [[ -f "$HOME/.termux/font.ttf.bak" || -f "$HOME/.termux/colors.properties.bak" || -f "$HOME/.termux/termux.properties.bak" ]] && ui_sel="|selected"
+    if has_termux_ui_changes || has_bundled_figlet_fonts || [[ "$DESKTOP_FONT" == "1" ]]; then
+        ui_sel="|selected"
     fi
+
     local asset_sel="" && [[ -f "$HOME/.draw" || -f "$HOME/.username" ]] && asset_sel="|selected"
 
-    # 2. Build Dynamic Menu Options
+    # 2. Build Dynamic Menu Options (UI cleanup before dir removal so figlet
+    #    backups living inside $SYS_DIR are still readable)
     local opts=()
     local actions=()
 
     opts+=("Revert Shell Profile Config$prof_sel")
     actions+=(clean_shell_profile)
 
-    opts+=("Remove Promptify System Directory$sys_sel")
-    actions+=(clean_sys_dir)
-
-    # Only show Termux UI option if on Termux
-    if [[ "$OS_TYPE" == "termux" ]]; then
-        opts+=("Revert Termux UI$ui_sel")
-        actions+=(clean_ui_settings)
-    fi
+    opts+=("Revert Terminal UI Settings$ui_sel")
+    actions+=(clean_ui_settings)
 
     opts+=("Remove Home Assets$asset_sel")
     actions+=(clean_assets)
 
+    opts+=("Remove Promptify System Directory$sys_sel")
+    actions+=(clean_sys_dir)
+
     # 3. Selection Menu
     local choices
-    choices=$(checkbox_menu "Uninstall Management" "${opts[@]}")
+    choices=$(checkbox_menu "Uninstall Management" "" "${opts[@]}")
 
     [[ "$choices" == "CANCELLED" || -z "$choices" ]] && return
 
@@ -47,21 +52,56 @@ uninstall_promptify() {
 
     echo -e "\n\e[1;34m[*] Starting uninstallation process...\e[0m"
 
-    local revert_profile=false
+    local action
     for choice in $choices; do
         action="${actions[$choice]}"
         $action
-        [[ "$action" == "clean_shell_profile" ]] && revert_profile=true
     done
 
-    # 4. Shell Revert Logic — only offer when the user cleaned the shell profile
-    if [[ "$revert_profile" == "true" ]]; then
-        revert_shell_to_bash
+    # 4. Restore pre-install shell — only offered when the current default
+    #    shell actually differs from what we recorded before install.
+    local target_shell="${PRE_SHELL:-bash}"
+    local cur_shell
+    if [[ "$OS_TYPE" == "termux" ]]; then
+        cur_shell=$(readlink -f "$HOME/.termux/shell" 2>/dev/null || echo "${SHELL:-}")
+    else
+        cur_shell=$(getent passwd "$(whoami)" 2>/dev/null | cut -d: -f7)
+        [[ -z "$cur_shell" ]] && cur_shell="${SHELL:-}"
+    fi
+    if [[ "${cur_shell##*/}" != "${target_shell##*/}" ]]; then
+        if confirm_action "Restore default shell to '${target_shell##*/}'?" "y"; then
+            restore_shell "$target_shell"
+        fi
     fi
 
     center_print "\e[1;32m[✔] Cleanup Complete!\e[0m"
-    
+
     press_enter
+}
+
+# Did install record that it touched the Termux UI (or is a file present that
+# only Promptify creates there)?
+has_termux_ui_changes() {
+    [[ "$TERMUX_UI" == "1" ]] && return 0
+    [[ "$OS_TYPE" == "termux" ]] || return 1
+    local f
+    for f in "$HOME/.termux/colors.properties" "$HOME/.termux/font.ttf"; do
+        [[ -f "$f" ]] && return 0
+    done
+    return 1
+}
+
+# Any bundled figlet font present (either the originals we overwrote are
+# backed up, or our copies are installed)?
+has_bundled_figlet_fonts() {
+    local dir
+    dir=$(figlet_font_dirs)
+    [[ -d "$dir" ]] || return 1
+    local f
+    for f in "${BUNDLED_FONTS[@]}"; do
+        [[ -f "$dir/$f" ]] && return 0
+    done
+    return 1
 }
 
 clean_shell_profile() {
@@ -73,19 +113,35 @@ clean_shell_profile() {
               -e '/build_prompt/d' \
               -e '/alias Promptify=/d' \
               -e '/alias pty=/d' "$HOME/.zshrc" 2>/dev/null
-        
+
         if [[ -f "$HOME/.zshrc.bak" ]]; then
-            center_print "\e[1;34m[*] \e[0mRestoring and cleaning ~/.zshrc.bak..."
+            center_print "\e[1;34m[*] \e[0mRestoring original ~/.zshrc..."
             mv "$HOME/.zshrc.bak" "$HOME/.zshrc"
             sed_i '/# --- Promptify Config ---/,/# --- End Promptify Config ---/d' "$HOME/.zshrc" 2>/dev/null
         fi
     fi
     rm -f "$HOME/.zshrc.bak" "$HOME/.zshrc.pre-promptify"
 
-    # Clean ~/.bashrc
+    # Remove ~/.zshrc entirely if Promptify created it (pre-install state)
+    if [[ "$HAD_ZSHRC" == "0" && -f "$HOME/.zshrc" ]] && ! grep -q '[^[:space:]]' "$HOME/.zshrc" 2>/dev/null; then
+        rm -f "$HOME/.zshrc"
+    fi
+
+    # Clean ~/.bashrc (same treatment: marker strip, .bak restore)
     if [[ -f "$HOME/.bashrc" ]]; then
         center_print "\e[1;34m[*] \e[0mCleaning ~/.bashrc..."
         sed_i '/# --- Promptify Config ---/,/# --- End Promptify Config ---/d' "$HOME/.bashrc" 2>/dev/null
+
+        if [[ -f "$HOME/.bashrc.bak" ]]; then
+            center_print "\e[1;34m[*] \e[0mRestoring original ~/.bashrc..."
+            mv "$HOME/.bashrc.bak" "$HOME/.bashrc"
+            sed_i '/# --- Promptify Config ---/,/# --- End Promptify Config ---/d' "$HOME/.bashrc" 2>/dev/null
+        fi
+    fi
+    rm -f "$HOME/.bashrc.bak"
+
+    if [[ "$HAD_BASHRC" == "0" && -f "$HOME/.bashrc" ]] && ! grep -q '[^[:space:]]' "$HOME/.bashrc" 2>/dev/null; then
+        rm -f "$HOME/.bashrc"
     fi
 }
 
@@ -98,7 +154,7 @@ clean_sys_dir() {
     # Remove global binary
     local bin_path="/usr/local/bin/promptify"
     [[ "$OS_TYPE" == "termux" ]] && bin_path="$PREFIX/bin/promptify"
-    
+
     if [[ -f "$bin_path" ]]; then
         center_print "\e[1;34m[*] \e[0mRemoving global command..."
         if [[ "$OS_TYPE" == "termux" ]]; then
@@ -113,14 +169,28 @@ clean_ui_settings() {
     if [[ "$OS_TYPE" == "termux" ]]; then
         center_print "\e[1;34m[*] \e[0mReverting Termux UI settings..."
         local files=("font.ttf" "colors.properties" "termux.properties")
+        local f
         for f in "${files[@]}"; do
             if [[ -f "$HOME/.termux/${f}.bak" ]]; then
                 mv "$HOME/.termux/${f}.bak" "$HOME/.termux/${f}"
-            else
-                rm -f "$HOME/.termux/${f}"
+            elif [[ -f "$HOME/.termux/${f}" ]]; then
+                # Only remove a file we actually installed — a user's own
+                # termux.properties (or any custom file) must be left alone.
+                if cmp -s "$HOME/.termux/${f}" "$INSTALL_DIR/assets/${f}" 2>/dev/null \
+                || cmp -s "$HOME/.termux/${f}" "$INSTALL_DIR/assets/termux.properties2" 2>/dev/null \
+                || file_matches_fingerprint "$HOME/.termux/${f}"; then
+                    rm -f "$HOME/.termux/${f}"
+                fi
             fi
         done
         termux-reload-settings 2>/dev/null || true
+    fi
+
+    # Restore bundled figlet fonts (never removes the package's own fonts)
+    remove_bundled_figlet_fonts
+
+    if [[ "$OS_TYPE" != "termux" ]]; then
+        clean_desktop_font
     fi
 }
 
@@ -129,23 +199,94 @@ clean_assets() {
     rm -f "$HOME/.draw" "$HOME/.username" "$HOME/.promptify_font.flf"
 }
 
-revert_shell_to_bash() {
-    # If we aren't in Zsh or Zsh isn't the default, no need to revert
-    [[ "$SHELL" != *"zsh"* ]] && return
+# Remove the Nerd Font and undo terminal config edits made by configure_terminal_font
+clean_desktop_font() {
+    center_print "\e[1;34m[*] \e[0mRemoving desktop font changes..."
 
-    # Try to find a sensible fallback shell
-    local fallback_shell="bash"
-    [[ -f "/bin/bash" ]] && fallback_shell="/bin/bash"
-    [[ -f "/usr/bin/bash" ]] && fallback_shell="/usr/bin/bash"
-    
-    if confirm_action "Revert default shell to Bash?" "y"; then
-        if [[ "$OS_TYPE" == "termux" ]]; then
-            chsh -s bash
-        else
-            local target_user
-            target_user=$(whoami)
-            $SUDO chsh -s "$fallback_shell" "$target_user" &> /dev/null
-        fi
-        center_print "\e[1;32m[✔] \033[0mDefault shell reverted."
+    # Remove the font we installed (only if it still matches our asset or a
+    # recorded fingerprint)
+    local font_file="$HOME/.local/share/fonts/JetBrainsMonoNerdFont-Regular.ttf"
+    if [[ -f "$font_file" ]] && { cmp -s "$font_file" "$INSTALL_DIR/assets/font.ttf" 2>/dev/null || file_matches_fingerprint "$font_file"; }; then
+        rm -f "$font_file"
+        command -v fc-cache &>/dev/null && fc-cache -f "$HOME/.local/share/fonts" >/dev/null 2>&1 || true
     fi
+
+    # Kitty: restore backup, else strip our line + drop file if empty
+    local kc="$HOME/.config/kitty/kitty.conf"
+    if [[ -f "$kc.bak" ]]; then
+        mv -f "$kc.bak" "$kc"
+    elif [[ -f "$kc" ]]; then
+        sed_i '/^font_family JetBrainsMono Nerd Font$/d' "$kc" 2>/dev/null
+        remove_if_empty "$kc"
+    fi
+
+    # Alacritty
+    local alc=""
+    [[ -f "$HOME/.config/alacritty/alacritty.toml" ]] && alc="$HOME/.config/alacritty/alacritty.toml"
+    [[ -f "$HOME/.config/alacritty/alacritty.yml" ]] && alc="$HOME/.config/alacritty/alacritty.yml"
+    if [[ -n "$alc" && -f "${alc}.bak" ]]; then
+        mv -f "${alc}.bak" "$alc"
+    elif [[ -n "$alc" && -f "$alc" ]]; then
+        sed_i -e '/^\[font\.normal\]$/,/^$/d' -e '/^family = "JetBrainsMono Nerd Font"$/d' "$alc" 2>/dev/null
+        remove_if_empty "$alc"
+    fi
+
+    # Konsole profiles
+    local p
+    for p in "$HOME"/.local/share/konsole/*.profile; do
+        [[ -f "$p" ]] || continue
+        if [[ -f "$p.bak" ]]; then
+            mv -f "$p.bak" "$p"
+        else
+            sed_i '/^Font=JetBrainsMono Nerd Font,12$/d' "$p" 2>/dev/null
+            remove_if_empty "$p"
+        fi
+    done
+
+    # XFCE4 Terminal
+    local xfce="$HOME/.config/xfce4/terminal/terminalrc"
+    if [[ -f "$xfce.bak" ]]; then
+        mv -f "$xfce.bak" "$xfce"
+    elif [[ -f "$xfce" ]]; then
+        sed_i '/^FontName=JetBrainsMono Nerd Font 12$/d' "$xfce" 2>/dev/null
+        remove_if_empty "$xfce"
+    fi
+}
+
+# Delete a file if nothing but whitespace remains
+remove_if_empty() {
+    local file="$1"
+    [[ -f "$file" ]] || return 0
+    if ! grep -q '[^[:space:]]' "$file" 2>/dev/null; then
+        rm -f "$file"
+    fi
+}
+
+# Restore the default shell that existed before install (falls back to bash)
+restore_shell() {
+    local target="${1:-${PRE_SHELL:-bash}}"
+    local base="${target##*/}"
+
+    # Resolve bare names to full paths
+    case "$target" in
+        */*) ;;
+        *) target=$(command -v "$target" 2>/dev/null || echo "$target") ;;
+    esac
+
+    if [[ "$OS_TYPE" == "termux" ]]; then
+        if command -v chsh &>/dev/null; then
+            chsh -s "$target" 2>/dev/null || chsh -s "$base" 2>/dev/null || true
+        fi
+        # chsh on Termux manages ~/.termux/shell; if it missed, set it directly
+        if [[ -e "$HOME/.termux/shell" || -L "$HOME/.termux/shell" ]]; then
+            rm -f "$HOME/.termux/shell"
+            if [[ -x "$target" ]]; then
+                ln -s "$target" "$HOME/.termux/shell" 2>/dev/null || true
+            fi
+        fi
+    else
+        $SUDO chsh -s "$target" "$(whoami)" &> /dev/null || true
+    fi
+
+    center_print "\e[1;32m[✔] \033[0mDefault shell restored to ${base}."
 }

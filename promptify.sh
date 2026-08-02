@@ -10,6 +10,7 @@ CHANNEL_SET=false
 IS_LOCAL=false
 CONFIRM_ALL=false
 SILENT_MODE=false
+POST_UPDATE=false
 
 # Resolve script path
 SOURCE="${BASH_SOURCE[0]}"
@@ -27,6 +28,7 @@ while [[ $# -gt 0 ]]; do
         --yes|-y) CONFIRM_ALL=true; shift ;;
         --silent|-s) SILENT_MODE=true; CONFIRM_ALL=true; shift ;;
         --channel) CHANNEL="${2:-stable}"; CHANNEL_SET=true; shift 2 || shift ;;
+        --post-update) POST_UPDATE=true; shift ;;
         *) shift ;;
     esac
 done
@@ -228,6 +230,19 @@ if ! is_promptify_installed; then
         guided_setup
         update_status
     fi
+fi
+
+# 4.6 Auto-Apply after an update / channel switch / rollback
+if [[ "$POST_UPDATE" == "true" ]]; then
+    clear
+    promptify_header
+    echo -e "\n\e[1;34m[*] Applying your settings...\e[0m"
+    sync_assets 2>/dev/null
+    if check_setup; then
+        refresh_ui
+    fi
+    echo -e "\n\e[1;32m[✔] You're all set (v$VERSION).\e[0m"
+    press_enter
 fi
 
 # 5. Main Loop

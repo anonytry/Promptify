@@ -46,7 +46,11 @@ setup_ui() {
     if [[ ! -d "$SYS_DIR/oh-my-zsh" ]]; then
         return 1
     fi
-    
+
+    # Record pre-install state (shell, profiles, UI files) BEFORE anything is
+    # modified, so uninstall can restore the exact original state.
+    record_install_state
+
     center_print "\e[1;34m[*] \e[32mConfiguring UI Components...\e[0m"
 
     local asset_dir="$INSTALL_DIR/assets"
@@ -76,6 +80,7 @@ setup_ui() {
         fi
         
         mkdir -p "$PREFIX/share/figlet"
+        backup_bundled_figlet_fonts
         for font_file in "${bundled_fonts[@]}"; do
             cp "$asset_dir/$font_file" "$PREFIX/share/figlet/" 2>/dev/null || true
         done
@@ -90,6 +95,7 @@ setup_ui() {
              fi
 
              if [[ -d "$figlet_dir" ]]; then
+                 backup_bundled_figlet_fonts
                  for font_file in "${bundled_fonts[@]}"; do
                      $SUDO cp "$asset_dir/$font_file" "$figlet_dir/" 2>/dev/null || true
                  done
@@ -99,6 +105,10 @@ setup_ui() {
         # Install Nerd Font + auto-set it in common desktop terminals
         apply_desktop_font
     fi
+
+    # Remember what we wrote into user-owned locations (for safe uninstall
+    # even after an update changes the bundled assets)
+    record_asset_fingerprints
 
     if [[ "$show_banner" == "true" ]]; then
         cp "$asset_dir/.draw" "$HOME/.draw" 2>/dev/null || true
@@ -243,6 +253,7 @@ EOF
 
     # Update .bashrc
     [[ ! -f "$HOME/.bashrc" ]] && touch "$HOME/.bashrc"
+    backup_file "$HOME/.bashrc"
     
     sed_i '/# --- Promptify Config ---/,/# --- End Promptify Config ---/d' "$HOME/.bashrc" 2>/dev/null
     

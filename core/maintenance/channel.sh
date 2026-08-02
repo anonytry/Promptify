@@ -8,11 +8,7 @@ resolve_channel() {
 
     local origin_url
     origin_url=$(git -C "$INSTALL_DIR" config --get remote.origin.url 2>/dev/null)
-    if [[ "$origin_url" == *"anonytry"* ]]; then
-        echo "testing"
-    else
-        echo "stable"
-    fi
+    [[ "$origin_url" == "$TESTING_URL" ]] && echo "testing" || echo "stable"
 }
 
 # Persist channel selection
@@ -41,6 +37,12 @@ channel_url() {
     [[ "${1:-$CUR_CHANNEL}" == "testing" ]] && echo "$TESTING_URL" || echo "$STABLE_URL"
 }
 
+# Fetch both channels into local refs so their versions can be shown together
+fetch_channel_versions() {
+    git -C "$INSTALL_DIR" fetch --quiet "$STABLE_URL" "$CHANNEL_BRANCH:refs/channels/stable" 2>/dev/null
+    git -C "$INSTALL_DIR" fetch --quiet "$TESTING_URL" "$CHANNEL_BRANCH:refs/channels/testing" 2>/dev/null
+}
+
 # Channel switch UI
 manage_channel() {
     if [[ ! -d "$INSTALL_DIR/.git" ]]; then
@@ -62,32 +64,66 @@ manage_channel() {
     local chan="stable"
     [[ "$CH_CHOICE" == "1" ]] && chan="testing"
 
-    local url="$STABLE_URL"
-    [[ "$chan" == "testing" ]] && url="$TESTING_URL"
+    if [[ "$chan" == "$CUR_CHANNEL" ]]; then
+        center_print "\e[1;33m[!] You're already on the $chan channel.\e[0m"
+        press_enter
+        return
+    fi
 
-    if confirm_action "Switch to $chan channel?" "n"; then
+    # Show what version each channel is on before switching
+    local stable_ver testing_ver target_ver
+    stable_ver="?"
+    testing_ver="?"
+    if fetch_channel_versions; then
+        stable_ver=$(remote_version "refs/channels/stable")
+        testing_ver=$(remote_version "refs/channels/testing")
+    fi
+    [[ -z "$stable_ver" ]] && stable_ver="?"
+    [[ -z "$testing_ver" ]] && testing_ver="?"
+
+    clear
+    promptify_header
+    echo -e "\n \e[1;34m[*] Channels:\e[0m"
+    echo -e "   \e[1;36mStable  \e[1;30m→\e[0m v$stable_ver"
+    echo -e "   \e[1;36mTesting \e[1;30m→\e[0m v$testing_ver"
+    echo
+
+    target_ver="$stable_ver"
+    [[ "$chan" == "testing" ]] && target_ver="$testing_ver"
+
+    if [[ "$target_ver" != "?" && "$(semver_compare "$VERSION" "$target_ver")" == "gt" ]]; then
+        echo -e " \e[1;33m[!] Switching to $chan (v$target_ver) is a \e[1;31mdowngrade\e[0m from your current v$VERSION."
+        echo
+    fi
+
+    if confirm_action "Switch to the $chan channel?" "n"; then
         echo -e "\e[1;34m[*] \e[32mSwitching to $chan channel...\e[0m"
 
-        save_channel "$chan"
-        CUR_CHANNEL="$chan"
-
-        ensure_channel_remote "$chan"
-
-        if [[ -n "$(git -C "$INSTALL_DIR" status --porcelain 2>/dev/null)" ]]; then
-            if ! confirm_action "Uncommitted changes exist. Discard them and switch?" "n"; then
-                center_print "\e[1;33m[!] Channel switch aborted.\e[0m"
+        # Protect tracked work on the program files
+        if ! git -C "$INSTALL_DIR" diff --quiet HEAD; then
+            if ! confirm_action "Unsaved changes exist. Replace them and switch?" "n"; then
+                center_print "\e[1;33m[!] Channel switch cancelled.\e[0m"
                 press_enter
                 return
             fi
         fi
 
-        if git -C "$INSTALL_DIR" fetch origin "$CHANNEL_BRANCH" &>/dev/null; then
-            git -C "$INSTALL_DIR" reset --hard "origin/$CHANNEL_BRANCH" 2>/dev/null
+        # Remember the version we leave behind on this channel
+        save_last_good "$CUR_CHANNEL"
+
+        save_channel "$chan"
+        CUR_CHANNEL="$chan"
+        ensure_channel_remote "$chan"
+
+        if git -C "$INSTALL_DIR" reset --hard "refs/channels/$chan" 2>/dev/null; then
+            if [[ "$INSTALL_DIR" != "$SYS_DIR" && -d "$SYS_DIR" ]]; then
+                sync_to_sys_dir
+            fi
             center_print "\e[1;32m[✔] Switched to $chan channel.\e[0m"
-            center_print "\e[1;33m[*] Run 'Reload & Apply UI' to apply the new version's settings.\e[0m"
             load_prefs
+            post_update_exec
         else
-            center_print "\e[1;31m[!] Network error: Unable to reach $url.\e[0m"
+            center_print "\e[1;31m[!] Network error: Unable to reach the channel.\e[0m"
         fi
         press_enter
     fi

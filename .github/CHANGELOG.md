@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-08-02
+
+### Added
+- **Install-State Manifest**: Install now records exactly what it changed (`~/.promptify/.install-state` — pre-install shell, profile existence, UI files, desktop font). Uninstall reads it back so cleanup reverses precisely what was applied, even after repeated re-applies.
+- **Version-Based Updates**: Update detection now compares version numbers instead of raw git hashes, so you'll never be offered a downgrade. Same version but newer changes → "hotfix sync" option; a version that can't be read falls back to hash comparison.
+- **Update & Channel Flow**: Updates/channel switches now show your current version and the target version ("v1.4.0 → v1.4.1"), auto-apply your settings after switching, and reload the app so the new code takes effect immediately.
+- **Rollback**: Each update saves the previous version; "Restore Previous Version" in the Updates menu puts it back and re-applies your settings.
+- **What's New Preview**: You can view the changelog of the available update before applying.
+- **Stale-Asset Fingerprints**: Files Promptify writes into your Termux/desktop are fingerprinted at apply time, so uninstall can remove them even after an update changed the bundled assets — while never touching files you've edited yourself.
+
+### Fixed
+- **Uninstall Cleanliness**: Uninstall now removes only what Promptify added:
+  - Termux UI files are removed only when they still match the bundled assets — a user's own `termux.properties` is preserved.
+  - Bundled figlet fonts are restored/removed without ever deleting the figlet package's own fonts (`banner.flf`/`slant.flf` originals are backed up before being overwritten).
+  - Desktop Nerd Font and terminal config edits (kitty/alacritty/konsole/xfce) are reverted via pre-edit backups.
+  - Shell profiles are fully restored: `.bashrc.bak` is now restored too, and empty profiles that Promptify created are removed.
+  - The pre-install login shell is restored (bash→bash, zsh→zsh) instead of always reverting to bash.
+  - Partial installs (leftover `~/.promptify` with no profile marker) are now detected and cleanable.
+
+---
+
 ## [1.4.0] - 2026-08-02
 
 ### Added

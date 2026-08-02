@@ -103,7 +103,7 @@ manage_dependencies() {
 
     # 2. Run checkbox menu
     local choices
-    choices=$(checkbox_menu "System Components / Repair" "${opts[@]}")
+    choices=$(checkbox_menu "System Components / Repair" "" "${opts[@]}")
 
     [[ "$choices" == "CANCELLED" || -z "$choices" ]] && return
 

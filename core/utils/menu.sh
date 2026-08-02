@@ -61,7 +61,8 @@ draw_menu_item() {
 
 checkbox_menu() {
     local title="$1"
-    shift
+    local desc="$2"
+    shift 2
     local options=("$@")
     local selected=()
     local status=()
@@ -127,6 +128,17 @@ checkbox_menu() {
             # 2. Title and separator
             center_print "\e[1;34m$title\e[0m" >&2
             draw_separator "$bar_w" "$bar_spacer" >&2
+
+            # 2b. Optional description (multi-line, dimmed)
+            if [[ -n "$desc" ]]; then
+                local old_ifs="$IFS"
+                IFS=$'\n'
+                for dl in $desc; do
+                    center_print "\e[2;37m$dl\e[0m" >&2
+                done
+                IFS="$old_ifs"
+                draw_separator "$bar_w" "$bar_spacer" >&2
+            fi
             
             # 3. Menu hints (Shortened to fit)
             center_print "\e[1;33m [ SPACE ]\e[0m Select | \e[1;33m[ ENTER ]\e[0m Start | \e[1;33m[ ESC ]\e[0m Back" >&2

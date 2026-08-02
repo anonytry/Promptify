@@ -29,6 +29,7 @@ configure_terminal_font() {
         mkdir -p "$HOME/.config/kitty"
         local kc="$HOME/.config/kitty/kitty.conf"
         [[ -f "$kc" ]] || touch "$kc"
+        backup_file "$kc"
         set_terminal_font_line "$kc" '^font_family.*' "font_family $FONT_NAME"
     fi
 
@@ -37,6 +38,7 @@ configure_terminal_font() {
     [[ -f "$HOME/.config/alacritty/alacritty.toml" ]] && alc="$HOME/.config/alacritty/alacritty.toml"
     [[ -f "$HOME/.config/alacritty/alacritty.yml" ]] && alc="$HOME/.config/alacritty/alacritty.yml"
     if [[ -n "$alc" ]]; then
+        backup_file "$alc"
         if grep -q '^\[font' "$alc" 2>/dev/null; then
             sed_i -E 's/^family = .*/family = "'"$FONT_NAME"'"/' "$alc" 2>/dev/null
         else
@@ -58,6 +60,7 @@ configure_terminal_font() {
         local p
         for p in "$HOME"/.local/share/konsole/*.profile; do
             [[ -f "$p" ]] || continue
+            backup_file "$p"
             if grep -q '^Font=' "$p" 2>/dev/null; then
                 sed_i 's/^Font=.*/Font='"$FONT_NAME"',12/' "$p" 2>/dev/null
             else
@@ -68,6 +71,7 @@ configure_terminal_font() {
 
     # XFCE4 Terminal
     if [[ -f "$HOME/.config/xfce4/terminal/terminalrc" ]]; then
+        backup_file "$HOME/.config/xfce4/terminal/terminalrc"
         set_terminal_font_line "$HOME/.config/xfce4/terminal/terminalrc" '^FontName=.*' "FontName=$FONT_NAME 12"
     fi
 }
