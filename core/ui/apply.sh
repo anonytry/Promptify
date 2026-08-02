@@ -20,14 +20,21 @@ bash "$target_script" --local "\$@"
 EOF
     
     if [[ "$OS_TYPE" == "termux" ]]; then
-        mv promptify_wrapper "$bin_path" 2>/dev/null || {
-            # Permission fallback
-            cat promptify_wrapper > "$bin_path" 2>/dev/null
-        }
+        if ! mv promptify_wrapper "$bin_path" 2>/dev/null && ! cat promptify_wrapper > "$bin_path" 2>/dev/null; then
+            echo -e "\e[1;31m[✗] Failed to install the 'promptify' command.\e[0m"
+            rm -f promptify_wrapper
+            return 1
+        fi
         chmod +x "$bin_path" 2>/dev/null
     else
         # Sudo fallback
-        $SUDO mv promptify_wrapper "$bin_path" 2>/dev/null
+        sudo_notice "Installing the 'promptify' command system-wide"
+        if ! $SUDO mv promptify_wrapper "$bin_path" 2>/dev/null; then
+            echo -e "\e[1;31m[✗] Failed to install the 'promptify' command (needs write access to $bin_path).\e[0m"
+            echo -e "\e[1;33m    Check that sudo works (id -nG) or that '$USER' can write to $bin_path, then re-run apply.\e[0m"
+            rm -f promptify_wrapper
+            return 1
+        fi
         $SUDO chmod +x "$bin_path" 2>/dev/null
     fi
     rm -f promptify_wrapper
@@ -81,23 +88,39 @@ setup_ui() {
         
         mkdir -p "$PREFIX/share/figlet"
         backup_bundled_figlet_fonts
+        local font_file
         for font_file in "${bundled_fonts[@]}"; do
-            cp "$asset_dir/$font_file" "$PREFIX/share/figlet/" 2>/dev/null || true
+            if [[ ! -f "$PREFIX/share/figlet/$font_file" ]] || ! cmp -s "$asset_dir/$font_file" "$PREFIX/share/figlet/$font_file"; then
+                cp "$asset_dir/$font_file" "$PREFIX/share/figlet/" 2>/dev/null || true
+            fi
         done
         termux-reload-settings 2>/dev/null || true
     else
         if command -v figlet &> /dev/null; then
              local figlet_dir="/usr/share/figlet"
              [[ -d "/usr/share/figlet/fonts" ]] && figlet_dir="/usr/share/figlet/fonts"
-             
-             if [[ ! -d "$figlet_dir" ]]; then
-                 $SUDO mkdir -p "$figlet_dir" 2>/dev/null || true
-             fi
 
-             if [[ -d "$figlet_dir" ]]; then
+             # Idempotent: only touch the system figlet dir when a bundled font is
+             # missing or stale, so repeated applies never prompt for sudo again.
+             local need_font_write=false
+             local font_file
+             for font_file in "${bundled_fonts[@]}"; do
+                 if [[ ! -f "$figlet_dir/$font_file" ]] || ! cmp -s "$asset_dir/$font_file" "$figlet_dir/$font_file"; then
+                     need_font_write=true
+                     break
+                 fi
+             done
+
+             if [[ "$need_font_write" == true ]]; then
+                 sudo_notice "Installing system-wide figlet banner fonts"
+                 if [[ ! -d "$figlet_dir" ]]; then
+                     $SUDO mkdir -p "$figlet_dir" 2>/dev/null || true
+                 fi
                  backup_bundled_figlet_fonts
                  for font_file in "${bundled_fonts[@]}"; do
-                     $SUDO cp "$asset_dir/$font_file" "$figlet_dir/" 2>/dev/null || true
+                     if [[ ! -f "$figlet_dir/$font_file" ]] || ! cmp -s "$asset_dir/$font_file" "$figlet_dir/$font_file"; then
+                         $SUDO cp "$asset_dir/$font_file" "$figlet_dir/" 2>/dev/null || true
+                     fi
                  done
              fi
         fi
@@ -284,6 +307,7 @@ EOF
             if [[ "$OS_TYPE" == "termux" ]]; then
                 chsh -s zsh 2>/dev/null || true
             else
+                sudo_notice "Switching your default shell to zsh"
                 $SUDO chsh -s "$zsh_path" "$(whoami)" 2>/dev/null || true
             fi
         fi

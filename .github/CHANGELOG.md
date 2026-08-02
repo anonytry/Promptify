@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2] - 2026-08-02
+
+### Added
+- **Void Linux support**: Package management is now handled through XBPS (`xbps-install`) on Void. Detection recognizes `ID=void` in `/etc/os-release` (and falls back to the `xbps-install` binary when os-release is missing/unrecognized); dependency install/update flows use `sudo xbps-install`.
+- **Slackware support**: Package management now works through `slackpkg` on Slackware. Detection recognizes `ID=slackware` in `/etc/os-release` (plus a `slackpkg` binary fallback — useful since old Slackware releases ship no os-release), and install/update run non-interactively via `sudo slackpkg -batch=on -default_answer=y install/update`.
+
+### Fixed
+- **Bootstrap on proot-distro (Termux Linux)**: The remote one-liner no longer mistakes the host Termux's `git`/`tput` (visible through proot but unexecutable) for a working install. Bootstrap now checks that `git`/`tput` actually run, picks the package manager from `/etc/os-release` (apt/pacman/dnf/...) before falling back to Termux's `pkg`, and re-hashes bash's command cache (`hash -r`) so the freshly installed binaries are used — installs inside proot-distro now work instead of failing with `cannot execute: required file not found`.
+- **Prompt Theme preview showed the wrong layout**: The "Prompt Theme Style" color menu always previewed the Parrot layout. It now previews your active Prompt Style (Parrot/Fish/Minimal) with the hovered theme's colors.
+- **Repeated sudo prompts on every "Reload & Apply UI"**: Re-applying (style/color/banner changes — even with no changes at all) no longer re-asks for your password. System-wide figlet fonts are only copied when actually missing or outdated, so sudo is only needed on first setup (dependencies, system fonts, shell switch, `promptify` command). A short note now appears before the password prompt explaining why admin access is needed.
+- **Restart shell prompt after applying changes**: Applying a style/theme/banner/font change now asks "Restart Zsh now to apply changes?" — choose **y** to instantly reload into a fresh shell showing the new prompt (no need to exit and reopen the terminal), or **n** to stay. The reloaded shell starts in the directory you launched Promptify from (the v1.3.1 "wrong directory after exit" issue), and the reload is skipped entirely when not attached to a real terminal.
+- **Silent dependency-install failures (e.g. on a fresh Arch install)**: Dependencies are no longer reported as "ALL DONE" when they never actually installed. Promptify now (1) fails loudly up front if root is required but `sudo`/`doas` is missing or the user can't elevate, (2) checks every package install result and aborts with the exact failing command plus a fix hint, (3) treats `lolcat` as optional (warns, continues) instead of failing the whole install, and (4) stops suppressing errors when installing the system-wide `promptify` command. The wizard's success message now only shows when dependencies genuinely succeeded. Optional tools like Eza/Bat no longer fail the whole install.
+- **Package manager detection could yield "unknown" on Arch and skip every install**: The root cause of the silent installs — `/etc/os-release` detection missed quoted `ID` values (e.g. `ID="arch"`) and unrecognized Arch-based distros, leaving `PKG_MNGR=unknown` so every install was a no-op. Detection now parses `ID`/`ID_LIKE` quote- and list-tolerant (Arch, EndeavourOS, etc. all resolve to `pacman`), and if `os-release` is missing or unrecognized it falls back to whichever package manager binary is actually installed (`pacman`, `apt-get`, `dnf`, `zypper`, `apk`, `emerge`, `brew`).
+
+---
+
 ## [1.4.1] - 2026-08-02
 
 ### Added

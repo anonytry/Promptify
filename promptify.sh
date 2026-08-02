@@ -12,6 +12,10 @@ CONFIRM_ALL=false
 SILENT_MODE=false
 POST_UPDATE=false
 
+# Where the user launched Promptify from — the reloaded shell starts here so it
+# never lands in the clone/system directory after an apply.
+ORIGINAL_DIR="$(pwd)"
+
 # Resolve script path
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
@@ -60,17 +64,48 @@ if [[ "$IS_LOCAL" == "false" ]]; then
     
     [[ "$SILENT_MODE" == "false" ]] && echo -e "\e[1;34m[*] Promptify: Bootstrap Mode\e[0m"
 
-    # Ensure git
-    if ! command -v git &>/dev/null; then
+    # Ensure git actually runs — a bare `command -v` can match a broken PATH
+    # entry (e.g. the host Termux's git visible inside a proot-distro Linux),
+    # which would make every later git call fail.
+    if ! command -v git &>/dev/null || ! git --version &>/dev/null; then
         [[ "$SILENT_MODE" == "false" ]] && echo -ne "\e[1;34m[*] Installing git...\e[0m"
-        if [[ -d "/data/data/com.termux/files/usr/bin" ]]; then
+        bs_sudo=""
+        [[ "$(id -u)" -ne 0 ]] && command -v sudo &>/dev/null && bs_sudo="sudo"
+
+        if [[ -f /etc/os-release ]]; then
+            if command -v apt &>/dev/null; then
+                run_cmd $bs_sudo apt update -y
+                run_cmd $bs_sudo apt install git -y
+            elif command -v pacman &>/dev/null; then
+                run_cmd $bs_sudo pacman -Sy --noconfirm git
+            elif command -v dnf &>/dev/null; then
+                run_cmd $bs_sudo dnf install -y git
+            elif command -v zypper &>/dev/null; then
+                run_cmd $bs_sudo zypper install -y git
+            elif command -v apk &>/dev/null; then
+                run_cmd $bs_sudo apk add git
+            elif command -v brew &>/dev/null; then
+                run_cmd brew install git
+            else
+                echo -e " \e[1;31m[!] Could not detect a package manager. Install git manually.\e[0m"
+                exit 1
+            fi
+        elif [[ -d "/data/data/com.termux/files/usr/bin" ]]; then
             run_cmd pkg install git -y
-        elif command -v apt &>/dev/null; then
-            run_cmd sudo apt update -y
-            run_cmd sudo apt install git -y
+        else
+            echo -e " \e[1;31m[!] Could not detect a package manager. Install git manually.\e[0m"
+            exit 1
         fi
         [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;32mDone.\e[0m"
+        # Drop bash's cached path for git (it may have resolved to the broken
+        # host-Termux binary earlier) so the freshly installed one is used.
+        hash -r
+        if ! git --version &>/dev/null; then
+            echo -e " \e[1;31m[!] git is still not working. Install it manually, then re-run.\e[0m"
+            exit 1
+        fi
     fi
+    hash -r
     
     if [[ -d "$INSTALL_DIR" ]]; then
         if [[ "$CONFIRM_ALL" == "true" ]]; then
@@ -120,8 +155,9 @@ source "$INSTALL_DIR/core/env/detect.sh"
 detect_env
 
 if [[ "$IS_LOCAL" == "true" ]]; then
-    # Bootstrap core tools
-    if ! command -v tput &>/dev/null || ! command -v git &>/dev/null; then
+    # Bootstrap core tools (functional checks — a broken PATH entry must not
+    # count as installed, e.g. host Termux binaries inside proot-distro)
+    if ! tput cols &>/dev/null || ! git --version &>/dev/null; then
         [[ "$SILENT_MODE" == "false" ]] && echo -ne "\e[1;34m[*] Installing core dependencies for your system...\e[0m"
         
         case $PKG_MNGR in
@@ -134,6 +170,8 @@ if [[ "$IS_LOCAL" == "true" ]]; then
             brew) run_cmd brew install ncurses git ;;
         esac
         [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;32mDone.\e[0m"
+        # Drop cached paths so freshly installed tput/git are picked up
+        hash -r
     fi
 fi
 

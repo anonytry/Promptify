@@ -91,31 +91,30 @@ theme_preview() {
 
     # Get theme colors from central repo
     read -r border tag <<< "$(get_theme_data "$idx")"
-    
-    local h_name="termux"
-    local short_tag="${BANNER_NAME:-Promptify}"
-    short_tag="${short_tag%% *}"
-    
+
     local c_border="${ANSI_COLORS[$border]}"
     local c_tag="${ANSI_COLORS[$tag]}"
-    local reset="${ANSI_COLORS[reset]}"
 
-    echo -ne "${spacer}${c_border}┌─[\e[1;33madmin/${reset}${c_tag}${short_tag}${reset}@\e[1;32m${h_name}${reset}${c_border}]─[\e[1;32m~${reset}${c_border}]${reset}\e[K"
-    echo -e "\n${spacer}${c_border}└──╼ \e[1;31m❯\e[1;34m❯\e[1;30m❯${reset} \e[K"
+    # Render the ACTIVE prompt layout (parrot/fish/minimal) with the hovered
+    # theme's colors — not always Parrot.
+    local style_idx=0
+    case "$CUR_PROMPT_STYLE" in
+        "fish") style_idx=1 ;;
+        "minimal") style_idx=2 ;;
+    esac
+
+    prompt_layout_render "$style_idx" "$spacer" "$c_border" "$c_tag"
 }
 
-# Prompt layout preview for the Prompt Style menu. Mirrors the exact layout
-# get_prompt_block() emits for each style, using the active theme colors.
-prompt_preview() {
+# Renders a prompt layout (0=parrot, 1=fish, 2=minimal) for previews. Shared by
+# the Prompt Style and Prompt Theme menus. Mirrors the exact layout
+# get_prompt_block() emits for each style.
+prompt_layout_render() {
     local idx="$1"
     local spacer="$2"
-    local mode="$3"
+    local c_border="${3:-${ANSI_COLORS[$CUR_THEME_BORDER]:-\e[1;34m}}"
+    local c_tag="${4:-${ANSI_COLORS[$CUR_THEME_TAG]:-\e[1;36m}}"
 
-    [[ "$mode" == "type" ]] && { echo "footer"; return; }
-    [[ $idx -gt 2 ]] && return
-
-    local c_border="${ANSI_COLORS[$CUR_THEME_BORDER]:-\e[1;34m}"
-    local c_tag="${ANSI_COLORS[$CUR_THEME_TAG]:-\e[1;36m}"
     local c_user="\e[1;32m"
     local c_path="\e[1;32m"
     local reset="${ANSI_COLORS[reset]}"
@@ -135,4 +134,17 @@ prompt_preview() {
             echo -e "${spacer}${c_path}~${reset}> \e[K"
             ;;
     esac
+}
+
+# Prompt layout preview for the Prompt Style menu. Mirrors the exact layout
+# get_prompt_block() emits for each style, using the active theme colors.
+prompt_preview() {
+    local idx="$1"
+    local spacer="$2"
+    local mode="$3"
+
+    [[ "$mode" == "type" ]] && { echo "footer"; return; }
+    [[ $idx -gt 2 ]] && return
+
+    prompt_layout_render "$idx" "$spacer"
 }

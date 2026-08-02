@@ -6,6 +6,34 @@ is_installed() {
 
 install_dependencies() {
     local skip_power="${1:-false}"
+    
+    # --- Admin access check: fail loudly & early if we can't elevate. Only for
+    # system package managers (Termux's pkg and Homebrew don't need root) ---
+    case "$PKG_MNGR" in
+        apt|pacman|dnf|zypper|apk|emerge|xbps|slackpkg)
+            if [[ "$(id -u)" -ne 0 ]]; then
+                if [[ -z "$SUDO" ]]; then
+                    echo -e "\e[1;31m[✗] Dependencies need root, but no 'sudo' or 'doas' was found.\e[0m"
+                    echo -e "\e[1;33m    Install sudo as root (Arch: 'pacman -S sudo') and add your user to the wheel group, then re-run.\e[0m"
+                    return 1
+                fi
+                sudo_notice "Installing system dependencies"
+                if [[ "$SUDO" == "sudo" ]]; then
+                    $SUDO -v || {
+                        echo -e "\e[1;31m[✗] Admin (sudo) access is required to install dependencies.\e[0m"
+                        echo -e "\e[1;33m    Your user must be allowed to sudo (e.g. add to the 'wheel' group: usermod -aG wheel ${USER}), then log out and back in.\e[0m"
+                        return 1
+                    }
+                else
+                    $SUDO true || {
+                        echo -e "\e[1;31m[✗] Admin (doas) access is required to install dependencies.\e[0m"
+                        return 1
+                    }
+                fi
+            fi
+            ;;
+    esac
+
     echo -e "\033[1;34m[*] \033[32mUpdating package list...\033[0m"
     
     case $PKG_MNGR in
@@ -14,6 +42,8 @@ install_dependencies() {
         pacman) $SUDO pacman -Sy --noconfirm || return 1 ;;
         dnf) $SUDO dnf check-update -y || true ;;
         zypper) $SUDO zypper refresh || return 1 ;;
+        xbps) $SUDO xbps-install -S || return 1 ;;
+        slackpkg) $SUDO slackpkg -batch=on -default_answer=y update || return 1 ;;
         apk) $SUDO apk update || return 1 ;;
         brew) brew update || return 1 ;;
         unknown) echo -e "\e[1;33m[!] Unknown package manager. Skipping update...\e[0m" ;;
@@ -23,10 +53,11 @@ install_dependencies() {
 
     # Base Packages
     local base_pkgs=("figlet" "git" "zsh")
+    local dep_failed=false
     for pkg in "${base_pkgs[@]}"; do
         if ! is_installed "$pkg"; then
             echo -e "\033[1;34m[*] \033[32mInstalling $pkg...\033[0m"
-            install_single_pkg "$pkg"
+            install_single_pkg "$pkg" || dep_failed=true
         fi
     done
 
@@ -36,15 +67,16 @@ install_dependencies() {
         case $PKG_MNGR in
             pkg) tput_pkg="ncurses-utils" ;;
             apt) tput_pkg="ncurses-bin" ;;
+            xbps) tput_pkg="ncurses" ;;
         esac
-        install_single_pkg "$tput_pkg"
+        install_single_pkg "$tput_pkg" || dep_failed=true
     fi
 
     # Termux Specifics
     if [[ "$OS_TYPE" == "termux" ]]; then
         for tpkg in "termux-api" "termux-tools"; do
              if ! is_installed "$tpkg"; then
-                 pkg install "$tpkg" -y
+                 install_single_pkg "$tpkg" || dep_failed=true
              fi
         done
     fi
@@ -65,21 +97,21 @@ install_dependencies() {
                 echo -e "\033[1;34m[*] \033[32mReinstalling Ruby with OpenSSL support...\033[0m"
                 pkg reinstall ruby -y || pkg install ruby -y
             fi
-            gem install lolcat --no-document || echo "Lolcat gem fail"
+            gem install lolcat --no-document \
+                || echo -e "\e[1;33m[!] Could not install lolcat (optional, continuing without it).\e[0m"
         else
             case $PKG_MNGR in
-                apt) install_single_pkg "lolcat" ;;
-                pacman) install_single_pkg "lolcat" ;;
-                dnf) install_single_pkg "lolcat" ;;
-                zypper) install_single_pkg "lolcat" ;;
-                apk) install_single_pkg "lolcat" ;;
-                brew) install_single_pkg "lolcat" ;;
+                apt|pacman|dnf|zypper|apk|brew|xbps|slackpkg)
+                    install_single_pkg "lolcat" \
+                        || echo -e "\e[1;33m[!] Could not install lolcat (optional, continuing without it).\e[0m"
+                    ;;
                 *) 
                     echo -e "\033[1;34m[*] \033[32mInstalling lolcat via gem...\033[0m"
                     if ! is_installed ruby; then
                         install_single_pkg "ruby"
                     fi
-                    $SUDO gem install lolcat --no-document || echo "Lolcat gem fail"
+                    $SUDO gem install lolcat --no-document \
+                        || echo -e "\e[1;33m[!] Could not install lolcat (optional, continuing without it).\e[0m"
                     ;;
             esac
         fi
@@ -121,36 +153,59 @@ Skip for now? You can add them anytime later from Dependencies → Others." \
         ! is_installed bat && ! is_installed batcat && install_single_pkg "bat"
     fi
 
+    if [[ "$dep_failed" == "true" ]]; then
+        echo -e "\e[1;31m[✗] Some required packages failed to install (see messages above).\e[0m"
+        return 1
+    fi
+
     return 0
 }
 
 install_single_pkg() {
     local pkg="$1"
     echo -e "\033[1;34m[*] \033[32mInstalling $pkg...\033[0m"
+    local cmd=()
     case $PKG_MNGR in
-        pkg) pkg install "$pkg" -y ;;
-        apt) $SUDO apt install "$pkg" -y ;;
-        pacman) $SUDO pacman -S --noconfirm "$pkg" ;;
-        dnf) $SUDO dnf install -y "$pkg" ;;
-        zypper) $SUDO zypper install -y "$pkg" ;;
-        apk) $SUDO apk add "$pkg" ;;
-        emerge) $SUDO emerge --ask n "$pkg" ;;
-        brew) brew install "$pkg" ;;
+        pkg)     cmd=(pkg install "$pkg" -y) ;;
+        apt)     cmd=($SUDO apt install "$pkg" -y) ;;
+        pacman)  cmd=($SUDO pacman -S --noconfirm "$pkg") ;;
+        dnf)     cmd=($SUDO dnf install -y "$pkg") ;;
+        zypper)  cmd=($SUDO zypper install -y "$pkg") ;;
+        xbps)    cmd=($SUDO xbps-install -y "$pkg") ;;
+        slackpkg) cmd=($SUDO slackpkg -batch=on -default_answer=y install "$pkg") ;;
+        apk)     cmd=($SUDO apk add "$pkg") ;;
+        emerge)  cmd=($SUDO emerge --ask n "$pkg") ;;
+        brew)    cmd=(brew install "$pkg") ;;
+        *)
+            echo -e "\e[1;31m[✗] No installer known for package manager '$PKG_MNGR'.\e[0m"
+            return 1
+            ;;
     esac
+
+    if "${cmd[@]}"; then
+        return 0
+    fi
+
+    echo -e "\e[1;31m[✗] Failed to install '$pkg'.\e[0m"
+    echo -e "\e[1;33m    Command used: ${cmd[*]}\e[0m"
+    echo -e "\e[1;33m    Fix: run it manually (add 'sudo' if needed), then re-run Promptify.\e[0m"
+    return 1
 }
 
 install_power_tools() {
     echo -e "\033[1;34m[*] \033[32mInstalling Others (Eza, Bat)...\033[0m"
-    if ! is_installed eza && ! is_installed exa; then
-        install_single_pkg "eza"
+    local ok=true
+    if is_installed eza || is_installed exa; then
+        echo -e "\033[1;32m[✔] Eza/Exa already present.\033[0m"
     else
-        echo -e "\033[1;34m[*] \033[32mEza/Exa already present.\033[0m"
+        install_single_pkg "eza" || ok=false
     fi
-    if ! is_installed bat && ! is_installed batcat; then
-        install_single_pkg "bat"
+    if is_installed bat || is_installed batcat; then
+        echo -e "\033[1;32m[✔] Bat already present.\033[0m"
     else
-        echo -e "\033[1;34m[*] \033[32mBat already present.\033[0m"
+        install_single_pkg "bat" || ok=false
     fi
+    [[ "$ok" == "true" ]]
 }
 
 sync_assets() {

@@ -33,6 +33,16 @@ backup_file() {
     fi
 }
 
+# One-time, friendly heads-up before Promptify invokes sudo, so the password
+# prompt is never a surprise. Prints only once per session.
+SUDO_NOTICE_SHOWN=false
+sudo_notice() {
+    local reason="${1:-make a system change}"
+    [[ "$SUDO_NOTICE_SHOWN" == "true" ]] && return 0
+    SUDO_NOTICE_SHOWN=true
+    echo -e "\033[1;33m[i] ${reason} — needs \033[1;31madmin (sudo)\033[0m\033[1;33m access. You'll be asked once.\033[0m"
+}
+
 check_status() {
     local all_found=true
     local cmd

@@ -110,18 +110,25 @@ manage_dependencies() {
     # 3. Execution
     if confirm_action "Proceed with selected components?" "y"; then
         echo -e "\n\e[1;34m[*] Processing components...\e[0m"
+        local ok=true
         for choice in $choices; do
             action="${actions[$choice]}"
             if [[ "$action" == "install_plugins" ]]; then
                 if [[ -d "$SYS_DIR/oh-my-zsh" ]]; then
-                    install_plugins
+                    install_plugins || ok=false
                 else
                     center_print "\e[1;31m[!] Error: Install OMZ first to enable plugins.\e[0m"
+                    ok=false
                 fi
             else
-                $action
+                $action || ok=false
             fi
         done
-        press_enter "Task completed. Enter to return..."
+        if [[ "$ok" == "true" ]]; then
+            press_enter "Task completed. Enter to return..."
+        else
+            center_print "\e[1;31m[!] Some components failed to install. See messages above.\e[0m"
+            press_enter
+        fi
     fi
 }
