@@ -12,7 +12,7 @@ refresh_ui() {
         cp -f "$INSTALL_DIR/promptify.sh" "$SYS_DIR/" 2>/dev/null
     fi
 
-    setup_ui "$BANNER_NAME" "$CUR_THEME_BORDER" "$CUR_THEME_TAG" "$CUR_FONT" "$USE_BANNER"
+    setup_ui "$BANNER_NAME" "$CUR_THEME_BORDER" "$CUR_THEME_TAG" "$CUR_FONT" "$USE_BANNER" "$CUR_PROMPT_STYLE"
 }
 
 # Notify changes applied (never exec a nested shell)

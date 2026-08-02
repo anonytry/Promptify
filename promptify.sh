@@ -96,7 +96,7 @@ if [[ "$IS_LOCAL" == "false" ]]; then
         [[ "$CH_SEL" == "2" || "$CH_SEL" == "testing" ]] && CHANNEL="testing"
     fi
     
-    local clone_url="$STABLE_URL"
+    clone_url="$STABLE_URL"
     [[ "$CHANNEL" == "testing" ]] && clone_url="$TESTING_URL"
 
     [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;34m[*] Cloning Promptify ($CHANNEL channel) into $INSTALL_DIR...\e[0m"

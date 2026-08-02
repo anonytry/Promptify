@@ -66,7 +66,11 @@ check_updates() {
 
                     echo -e "\e[1;33m[*] Please run 'Reload & Apply UI' from the main menu to apply any new changes.\e[0m"
                     press_enter
-                    exec bash "$INSTALL_DIR/promptify.sh" --local
+                    UPD_ARGS=("--local")
+                    [[ "$CONFIRM_ALL" == "true" ]] && UPD_ARGS+=("--yes")
+                    [[ "$SILENT_MODE" == "true" ]] && UPD_ARGS+=("--silent")
+                    [[ -n "$CUR_CHANNEL" ]] && UPD_ARGS+=("--channel" "$CUR_CHANNEL")
+                    exec bash "$INSTALL_DIR/promptify.sh" "${UPD_ARGS[@]}"
                 else
                     echo -e "\e[1;31m[!] Update failed.\e[0m"
                     press_enter

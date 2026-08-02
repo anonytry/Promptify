@@ -40,6 +40,7 @@ setup_ui() {
     local theme_tag=${3:-"blue"}
     local font_pref=${4:-"random"}
     local show_banner=${5:-"true"}
+    local prompt_style=${6:-"parrot"}
     local cat_style="${CUR_CAT_STYLE:-full}"
 
     if [[ ! -d "$SYS_DIR/oh-my-zsh" ]]; then
@@ -104,6 +105,16 @@ setup_ui() {
         chmod +x "$HOME/.draw" 2>/dev/null || true
         set_username_pref NAME "$banner_name"
         set_username_pref FONT "$font_pref"
+        set_username_pref STYLE "$prompt_style"
+    else
+        # Drop any stale banner so load_prefs infers USE_BANNER=false consistently
+        rm -f "$HOME/.draw"
+        if [[ -f "$HOME/.username" ]]; then
+            sed_i '/^NAME=/d; /^FONT=/d' "$HOME/.username" 2>/dev/null
+            if [[ ! -s "$HOME/.username" ]] || ! grep -qE '^[A-Z_]+=' "$HOME/.username"; then
+                rm -f "$HOME/.username"
+            fi
+        fi
     fi
 
     # Clean old config robustly
@@ -169,7 +180,12 @@ EOF
     local banner_line=""
     [[ "$show_banner" == "true" ]] && banner_line="printf '\033[2J\033[H' && [[ -f ~/.draw ]] && PROMPTIFY_DIR=\"\$PROMPTIFY_DIR\" bash ~/.draw"
 
-    cat << EOF >> "$HOME/.zshrc"
+    # Build the zsh profile block into a temp file and syntax-check it before
+    # touching the real ~/.zshrc (a heredoc typo must never break the login shell).
+    local zshrc_add
+    zshrc_add=$(mktemp)
+
+    cat << EOF >> "$zshrc_add"
 
 # --- Promptify Config ---
 export PROMPTIFY_DIR="$SYS_DIR"
@@ -199,23 +215,15 @@ zstyle ':vcs_info:git:*' actionformats ' %B%F{blue}(%F{red}%b|%a%F{blue})%f'
 
 EOF
 
-    cat << EOF >> "$HOME/.zshrc"
+    cat << EOF >> "$zshrc_add"
 
 TNAME="$safe_banner_name"
 
-setopt prompt_subst
+EOF
 
-build_prompt() {
-    vcs_info
-    local h_name="\${HOST:-termux}"
-    local short_tag="\${TNAME%% *}"
-    local admin_tag="%(#,%F{yellow}admin/%f,)"
+    get_prompt_block "$prompt_style" >> "$zshrc_add"
 
-    local line1="%F{\$P_CLR_BORDER}┌─[\${admin_tag}%B%F{\$P_CLR_TAG}\${short_tag:l}%F{white}@%F{\$P_CLR_USER}\${h_name}%b%F{\$P_CLR_BORDER}]─[%F{\$P_CLR_PATH}%(4~|/%2~|%~)%F{\$P_CLR_BORDER}]%f\${vcs_info_msg_0_}"
-    PROMPT=\$'\n'\${line1}\$'\n%F{\$P_CLR_BORDER}└──╼ %B%F{red}❯%F{blue}❯%F{black}❯%f%b '
-}
-
-[[ -z "\${precmd_functions[(r)build_prompt]}" ]] && precmd_functions+=(build_prompt)
+    cat << EOF >> "$zshrc_add"
 
 export LS_COLORS='rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33:cd=40;33:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32'
 
@@ -223,6 +231,15 @@ $aliases_content
 printf '\e[4 q'
 # --- End Promptify Config ---
 EOF
+
+    # Syntax-check the generated block before installing it
+    if command -v zsh &> /dev/null && ! zsh -n "$zshrc_add" 2>/dev/null; then
+        center_print "\e[1;31m[!] Generated zsh config failed validation. Not applying.\e[0m"
+        rm -f "$zshrc_add"
+        return 1
+    fi
+    cat "$zshrc_add" >> "$HOME/.zshrc"
+    rm -f "$zshrc_add"
 
     # Update .bashrc
     [[ ! -f "$HOME/.bashrc" ]] && touch "$HOME/.bashrc"

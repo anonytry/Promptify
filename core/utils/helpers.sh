@@ -114,12 +114,19 @@ sed_i() {
 
 # Upsert a KEY="value" line in ~/.username without clobbering other keys.
 # Preserves unrelated preferences (e.g. CAT, CHANNEL) across updates.
+# Uses awk so values containing &, |, \ or " are safe (no sed replacement parsing).
 set_username_pref() {
     local key="$1"
     local value="$2"
     [[ -f "$HOME/.username" ]] || { echo "" > "$HOME/.username"; chmod 600 "$HOME/.username" 2>/dev/null; }
     if grep -q "^$key=" "$HOME/.username" 2>/dev/null; then
-        sed_i "s|^$key=.*|$key=\"$value\"|" "$HOME/.username"
+        awk -v k="$key" -v v="$value" '
+            BEGIN { done = 0 }
+            $0 ~ "^" k "=" { printf "%s=\"%s\"\n", k, v; done = 1; next }
+            { print }
+            END { if (!done) printf "%s=\"%s\"\n", k, v }
+        ' "$HOME/.username" > "$HOME/.username.tmp"
+        mv "$HOME/.username.tmp" "$HOME/.username"
     else
         echo "$key=\"$value\"" >> "$HOME/.username"
     fi

@@ -50,6 +50,7 @@ You can change your look anytime by running `promptify`:
 - **Change Banner**: Update the name or text at the top of your terminal.
 - **Switch Fonts**: Choose between Random, Shadow, Simple, Slant, Banner, Poison, or Graffiti styles (Slant, Banner, Poison, and Graffiti support lowercase letters).
 - **Prompt Themes**: Switch between Neon, Matrix, Dracula, and more.
+- **Prompt Styles**: Pick a prompt layout — Parrot, Fish, or Minimal — independent of the color theme.
 
 ## Changelog
 

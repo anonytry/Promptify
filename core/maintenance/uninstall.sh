@@ -47,13 +47,17 @@ uninstall_promptify() {
 
     echo -e "\n\e[1;34m[*] Starting uninstallation process...\e[0m"
 
+    local revert_profile=false
     for choice in $choices; do
         action="${actions[$choice]}"
         $action
+        [[ "$action" == "clean_shell_profile" ]] && revert_profile=true
     done
 
-    # 4. Shell Revert Logic
-    revert_shell_to_bash
+    # 4. Shell Revert Logic — only offer when the user cleaned the shell profile
+    if [[ "$revert_profile" == "true" ]]; then
+        revert_shell_to_bash
+    fi
 
     center_print "\e[1;32m[✔] Cleanup Complete!\e[0m"
     

@@ -11,16 +11,18 @@ manage_customization() {
             "Banner Management" \
             "Banner Font Style" \
             "Prompt Theme Style" \
+            "Prompt Style" \
             "$cat_opt" \
             "Back")
 
-        [[ "$CUST_CHOICE" == "CANCELLED" || "$CUST_CHOICE" == 4 ]] && break
+        [[ "$CUST_CHOICE" == "CANCELLED" || "$CUST_CHOICE" == 5 ]] && break
 
         case "$CUST_CHOICE" in
             0) manage_banner ;;
             1) manage_font ;;
             2) manage_theme ;;
-            3) manage_cat ;;
+            3) manage_prompt ;;
+            4) manage_cat ;;
         esac
     done
 }

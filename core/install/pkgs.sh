@@ -26,30 +26,18 @@ install_dependencies() {
     for pkg in "${base_pkgs[@]}"; do
         if ! is_installed "$pkg"; then
             echo -e "\033[1;34m[*] \033[32mInstalling $pkg...\033[0m"
-            case $PKG_MNGR in
-                pkg) pkg install "$pkg" -y ;;
-                apt) $SUDO apt install "$pkg" -y ;;
-                pacman) $SUDO pacman -S --noconfirm "$pkg" ;;
-                dnf) $SUDO dnf install -y "$pkg" ;;
-                zypper) $SUDO zypper install -y "$pkg" ;;
-                apk) $SUDO apk add "$pkg" ;;
-                emerge) $SUDO emerge --ask n "$pkg" ;;
-                brew) brew install "$pkg" ;;
-            esac
+            install_single_pkg "$pkg"
         fi
     done
 
-    # Terminal Helpers
+    # Terminal Helpers (package name varies by manager)
     if ! is_installed tput; then
+        local tput_pkg="ncurses"
         case $PKG_MNGR in
-            pkg) pkg install ncurses-utils -y ;;
-            apt) $SUDO apt install ncurses-bin -y ;;
-            pacman) $SUDO pacman -S --noconfirm ncurses ;;
-            dnf) $SUDO dnf install -y ncurses ;;
-            zypper) $SUDO zypper install -y ncurses ;;
-            apk) $SUDO apk add ncurses ;;
-            brew) brew install ncurses ;;
+            pkg) tput_pkg="ncurses-utils" ;;
+            apt) tput_pkg="ncurses-bin" ;;
         esac
+        install_single_pkg "$tput_pkg"
     fi
 
     # Termux Specifics
@@ -143,6 +131,7 @@ install_single_pkg() {
         dnf) $SUDO dnf install -y "$pkg" ;;
         zypper) $SUDO zypper install -y "$pkg" ;;
         apk) $SUDO apk add "$pkg" ;;
+        emerge) $SUDO emerge --ask n "$pkg" ;;
         brew) brew install "$pkg" ;;
     esac
 }
@@ -175,13 +164,20 @@ sync_assets() {
     cp "$asset_dir/ASCII-Shadow.flf" "$HOME/.promptify_font.flf" 2>/dev/null || true
     chmod 644 "$HOME/.promptify_font.flf" 2>/dev/null || true
 
-    # Copy to System
+    # Copy to System (including the .draw banner renderer so dep_status can heal)
     for font_file in "${bundled_fonts[@]}"; do
         cp "$asset_dir/$font_file" "$SYS_DIR/assets/" 2>/dev/null || true
     done
+    cp "$asset_dir/.draw" "$SYS_DIR/assets/.draw" 2>/dev/null || true
     cp "$asset_dir/termux.properties" "$SYS_DIR/assets/" 2>/dev/null || true
     cp "$asset_dir/colors.properties" "$SYS_DIR/assets/" 2>/dev/null || true
     cp "$asset_dir/font.ttf" "$SYS_DIR/assets/" 2>/dev/null || true
+
+    # Refresh the live banner renderer only if the banner is currently enabled
+    if [[ -f "$HOME/.draw" ]]; then
+        cp "$asset_dir/.draw" "$HOME/.draw" 2>/dev/null || true
+        chmod +x "$HOME/.draw" 2>/dev/null || true
+    fi
 
     # PC: install Nerd Font + auto-set in common desktop terminals
     if [[ "$OS_TYPE" != "termux" ]]; then

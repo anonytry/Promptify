@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-08-02
+
+### Added
+- **Prompt Styles**: Three prompt layouts — Parrot (default), Fish, and Minimal — selectable under Customization → Prompt Style with a live preview. The active style persists in `~/.username` (`STYLE=`) and is independent of the color theme.
+
+### Fixed
+- **Bootstrap Crash (Critical)**: The documented `bash <(curl ...)` install failed on every shell because `local` was used outside a function in the bootstrap.
+- **Banner Disable State**: Disabling the banner now removes stale `~/.draw` and the `NAME`/`FONT` prefs, keeping the reloaded state consistent.
+- **Preference Corruption**: `set_username_pref` now uses an `awk`-based upsert, so values containing `&`, `|`, `\`, or `"` no longer corrupt `~/.username`.
+- **Update Flags**: The auto-restart after an update now preserves `--silent`, `--yes`, and `--channel` flags.
+- **Uninstall Shell Revert**: The login shell is only reverted when the user opts to clean the shell profile.
+- **Profile Safety**: The generated `.zshrc` block is validated with `zsh -n` before being written.
+- **Package Manager Coverage**: All installs route through a single `install_single_pkg` helper, which now includes `emerge` (Gentoo).
+
+---
+
 ## [1.3.1] - 2026-08-02
 
 ### Fixed
