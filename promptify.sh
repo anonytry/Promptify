@@ -70,7 +70,13 @@ if [[ "$IS_LOCAL" == "false" ]]; then
     if ! command -v git &>/dev/null || ! git --version &>/dev/null; then
         [[ "$SILENT_MODE" == "false" ]] && echo -ne "\e[1;34m[*] Installing git...\e[0m"
         bs_sudo=""
-        [[ "$(id -u)" -ne 0 ]] && command -v sudo &>/dev/null && bs_sudo="sudo"
+        if [[ "$(id -u)" -ne 0 ]]; then
+            if command -v sudo &>/dev/null; then
+                bs_sudo="sudo"
+            elif command -v doas &>/dev/null; then
+                bs_sudo="doas"
+            fi
+        fi
 
         if [[ -f /etc/os-release ]]; then
             if command -v apt &>/dev/null; then
@@ -82,6 +88,14 @@ if [[ "$IS_LOCAL" == "false" ]]; then
                 run_cmd $bs_sudo dnf install -y git
             elif command -v zypper &>/dev/null; then
                 run_cmd $bs_sudo zypper install -y git
+            elif command -v xbps-install &>/dev/null; then
+                run_cmd $bs_sudo xbps-install -S
+                run_cmd $bs_sudo xbps-install -y git
+            elif command -v slackpkg &>/dev/null; then
+                run_cmd $bs_sudo slackpkg -batch=on -default_answer=y update
+                run_cmd $bs_sudo slackpkg -batch=on -default_answer=y install git
+            elif command -v emerge &>/dev/null; then
+                run_cmd $bs_sudo emerge --ask n dev-vcs/git
             elif command -v apk &>/dev/null; then
                 run_cmd $bs_sudo apk add git
             elif command -v brew &>/dev/null; then
@@ -159,19 +173,31 @@ if [[ "$IS_LOCAL" == "true" ]]; then
     # count as installed, e.g. host Termux binaries inside proot-distro)
     if ! tput cols &>/dev/null || ! git --version &>/dev/null; then
         [[ "$SILENT_MODE" == "false" ]] && echo -ne "\e[1;34m[*] Installing core dependencies for your system...\e[0m"
-        
+
         case $PKG_MNGR in
             pkg) run_cmd pkg install ncurses-utils git -y ;;
             apt) run_cmd $SUDO apt update -y && run_cmd $SUDO apt install ncurses-bin git -y ;;
             pacman) run_cmd $SUDO pacman -Sy --noconfirm ncurses git ;;
             dnf) run_cmd $SUDO dnf install -y ncurses git ;;
             zypper) run_cmd $SUDO zypper install -y ncurses git ;;
+            xbps) run_cmd $SUDO xbps-install -S && run_cmd $SUDO xbps-install -y ncurses git ;;
+            slackpkg) run_cmd $SUDO slackpkg -batch=on -default_answer=y update \
+                        && run_cmd $SUDO slackpkg -batch=on -default_answer=y install ncurses git ;;
+            emerge) run_cmd $SUDO emerge --ask n ncurses git ;;
             apk) run_cmd $SUDO apk add ncurses git ;;
             brew) run_cmd brew install ncurses git ;;
+            *)
+                echo -e " \e[1;31m[!] No package manager detected for core dependencies. Install git & ncurses manually.\e[0m"
+                exit 1
+                ;;
         esac
-        [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;32mDone.\e[0m"
         # Drop cached paths so freshly installed tput/git are picked up
         hash -r
+        if ! tput cols &>/dev/null || ! git --version &>/dev/null; then
+            echo -e " \e[1;31m[!] Core dependencies are still not working. Install git & ncurses manually, then re-run.\e[0m"
+            exit 1
+        fi
+        [[ "$SILENT_MODE" == "false" ]] && echo -e " \e[1;32mDone.\e[0m"
     fi
 fi
 
@@ -217,11 +243,7 @@ calculate_ui_width() {
     else
         fig_w=${#name}
     fi
-    export BOX_WIDTH=$((fig_w + 10))
-    [[ $BOX_WIDTH -lt 40 ]] && export BOX_WIDTH=40
-    local term_w
-    term_w=$(tput cols)
-    [[ $BOX_WIDTH -gt $((term_w - 2)) ]] && export BOX_WIDTH=$((term_w - 2))
+    export BOX_WIDTH=$(calc_box_width $((fig_w + 14)))
 }
 
 # shellcheck disable=SC2034

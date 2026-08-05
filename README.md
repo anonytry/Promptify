@@ -33,7 +33,7 @@ Promptify scales perfectly from mobile screens to ultrawide PC monitors.
 Run this single command to start the transformation:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/TopexGuy/promptify/refs/heads/main/promptify.sh)
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/TopexGuy/promptify/refs/heads/main/promptify.sh)"
 ```
 
 ## Post-Installation Commands

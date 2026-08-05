@@ -2,11 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.4.2] - 2026-08-02
+## [1.4.3] - 2026-08-05
 
 ### Added
 - **Void Linux support**: Package management is now handled through XBPS (`xbps-install`) on Void. Detection recognizes `ID=void` in `/etc/os-release` (and falls back to the `xbps-install` binary when os-release is missing/unrecognized); dependency install/update flows use `sudo xbps-install`.
 - **Slackware support**: Package management now works through `slackpkg` on Slackware. Detection recognizes `ID=slackware` in `/etc/os-release` (plus a `slackpkg` binary fallback — useful since old Slackware releases ship no os-release), and install/update run non-interactively via `sudo slackpkg -batch=on -default_answer=y install/update`.
+
+### Fixed
+- **Bootstrap on the new distros**: The remote one-liner and the universal core-dependency bootstrap now cover Void (`xbps-install`), Slackware (`slackpkg`) and Gentoo (`emerge`), and `doas` is honored as an alternative to `sudo`. Both bootstraps now verify the tools actually work afterwards and fail loudly with a manual-install hint instead of printing a fake "Done." when nothing was installed.
+- **Broken layout after terminal resize / maximize**: The ASCII banner, dashboard and menu boxes each used different width rules, so only the banner grew with the window — maximizing left a huge banner box sitting on a narrow dashboard/menu (and sub-menus kept a stale width the whole session). All boxes now share one width rule (`max(needed, 60% of terminal, 40)` capped to the terminal), the dashboard and menu bars scale with the banner, and menus recalculate on resize so everything re-aligns instantly and stays centered.
+- **Install one-liner failed on fish and gave a 404**: The `bash <(curl ...)` install command doesn't work on the fish shell (`fish: Invalid redirection target`), and the URL lost its `.sh` easily (`.../main/promptify` → 404). The README command now uses the shell-agnostic `bash -c "$(curl -fsSL .../promptify.sh)"` form (works on bash, fish, zsh, sh), and a new extensionless `promptify` bootstrap file makes `.../main/promptify` work exactly like `.../main/promptify.sh`, so a missing extension can never 404 again.
+
+---
+
+## [1.4.2] - 2026-08-02
 
 ### Fixed
 - **Bootstrap on proot-distro (Termux Linux)**: The remote one-liner no longer mistakes the host Termux's `git`/`tput` (visible through proot but unexecutable) for a working install. Bootstrap now checks that `git`/`tput` actually run, picks the package manager from `/etc/os-release` (apt/pacman/dnf/...) before falling back to Termux's `pkg`, and re-hashes bash's command cache (`hash -r`) so the freshly installed binaries are used — installs inside proot-distro now work instead of failing with `cannot execute: required file not found`.

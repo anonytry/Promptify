@@ -1,0 +1,7 @@
+#!/bin/bash
+# Extensionless bootstrap alias so BOTH of these work identically:
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/TopexGuy/promptify/refs/heads/main/promptify)"
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/TopexGuy/promptify/refs/heads/main/promptify.sh)"
+# This wrapper re-fetches the real entry point and runs it. Keep the URL in sync
+# with the one used by promptify.sh when it bootstraps itself.
+exec bash -c "$(curl -fsSL https://raw.githubusercontent.com/TopexGuy/promptify/refs/heads/main/promptify.sh)" "promptify" "$@"
