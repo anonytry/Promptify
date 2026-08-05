@@ -104,7 +104,13 @@ checkbox_menu() {
         if [[ "$redraw" == true ]]; then
             tput cup 0 0 >&2
             tput ed >&2
-            
+
+            # Refresh box width on terminal resize so bars track the banner
+            if [[ "${RESIZED:-false}" == "true" ]]; then
+                declare -F calculate_ui_width >/dev/null 2>&1 && calculate_ui_width
+                RESIZED=false
+            fi
+
             local term_w
             term_w=$(tput cols)
             
@@ -269,6 +275,12 @@ radio_menu() {
         if [[ "$redraw" == true ]]; then
             tput cup 0 0 >&2
             tput ed >&2
+
+            # Refresh box width on terminal resize so bars track the banner
+            if [[ "${RESIZED:-false}" == "true" ]]; then
+                declare -F calculate_ui_width >/dev/null 2>&1 && calculate_ui_width
+                RESIZED=false
+            fi
 
             local term_w
             term_w=$(tput cols)

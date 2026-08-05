@@ -4,8 +4,6 @@ draw_dashboard() {
     local b_clr="\033[1;34m" # Blue border
     local t_clr="\033[1;36m" # Title color
     local r_clr="\033[0m"
-    local term_w
-    term_w=$(tput cols)
 
     # 1. Define content lines first to calculate width
     local sys_line="System  : \033[1;32m$OS_NAME ($ARCH)\033[0m"
@@ -28,9 +26,8 @@ draw_dashboard() {
         [[ $lw -gt $max_w ]] && max_w=$lw
     done
 
-    local box_w=$((max_w + 6)) # Padding
-    [[ $box_w -lt 40 ]] && box_w=40
-    [[ $box_w -gt $((term_w - 2)) ]] && box_w=$((term_w - 2))
+    local box_w
+    box_w=$(calc_box_width $((max_w + 6))) # Padding + 60% terminal floor
 
     # Export for menu synchronization
     export BOX_WIDTH=$box_w

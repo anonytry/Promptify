@@ -109,6 +109,20 @@ get_spacer() {
     printf "%${offset}s" ""
 }
 
+# Unified box width: grows with the terminal (60% floor) but keeps content,
+# capped to fit. Used by the banner, dashboard and menus so every box tracks
+# the window size and stays aligned through resizes.
+calc_box_width() {
+    local w=$(( $1 ))
+    local term_w
+    term_w=$(tput cols 2>/dev/null || echo 80)
+    local min_target=$(( term_w * 6 / 10 ))
+    [[ $w -lt $min_target ]] && w=$min_target
+    [[ $w -gt $((term_w - 2)) ]] && w=$((term_w - 2))
+    [[ $w -lt 40 ]] && w=40
+    printf "%d" "$w"
+}
+
 center_print() {
     local text="$1"
     local clean_len
