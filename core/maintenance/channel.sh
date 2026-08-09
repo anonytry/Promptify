@@ -2,8 +2,10 @@
 
 # Resolve active update channel: explicit setting > origin-derived > stable
 resolve_channel() {
+    local prefs_file="$PFY_PREFS"
+    [[ -f "$prefs_file" ]] || prefs_file="$HOME/.username"
     local saved
-    saved=$(grep "^CHANNEL=" "$HOME/.username" 2>/dev/null | cut -d= -f2- | sed 's/^"//;s/"$//')
+    saved=$(get_pref CHANNEL "$prefs_file" "")
     [[ -n "$saved" ]] && { echo "$saved"; return; }
 
     local origin_url
@@ -14,7 +16,7 @@ resolve_channel() {
 # Persist channel selection
 save_channel() {
     local chan="$1"
-    set_username_pref CHANNEL "$chan"
+    set_pref CHANNEL "$chan"
 }
 
 # Point origin remote at the active channel's repo/branch
@@ -116,7 +118,7 @@ manage_channel() {
         ensure_channel_remote "$chan"
 
         if git -C "$INSTALL_DIR" reset --hard "refs/channels/$chan" 2>/dev/null; then
-            if [[ "$INSTALL_DIR" != "$SYS_DIR" && -d "$SYS_DIR" ]]; then
+            if [[ "$INSTALL_DIR" != "$PFY_CORE" && -d "$PFY_CORE" ]]; then
                 sync_to_sys_dir
             fi
             center_print "\e[1;32m[✔] Switched to $chan channel.\e[0m"

@@ -25,6 +25,8 @@ manage_theme() {
         # shellcheck disable=SC2034
         read -r CUR_THEME_BORDER CUR_THEME_TAG <<< "$(get_theme_data "$THEME_CHOICE")"
         export CUR_THEME_IDX="$THEME_CHOICE"
+        set_pref THEME_BORDER "$CUR_THEME_BORDER"
+        set_pref THEME_TAG "$CUR_THEME_TAG"
         refresh_ui
         center_print "\e[1;32m[✔] Applied!\e[0m"
         restart_shell

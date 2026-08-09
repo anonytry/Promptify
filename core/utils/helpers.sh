@@ -68,8 +68,11 @@ check_path() {
 }
 
 is_promptify_installed() {
-    # Installed if the profile marker is present OR the install dir still exists
-    # (the latter catches partial uninstalls where only the marker was stripped).
+    # New layout: snapshot manifest + runtime present.
+    if [[ -d "$PFY_SYS_DIR" && -f "$PFY_MANIFEST" ]]; then
+        return 0
+    fi
+    # Legacy layout: inline marker in the profile OR the old install dir.
     if [[ -f "$HOME/.zshrc" ]] && grep -q "# --- Promptify Config ---" "$HOME/.zshrc" 2>/dev/null; then
         return 0
     fi
@@ -77,7 +80,11 @@ is_promptify_installed() {
 }
 
 check_setup() {
-    if [[ ! -d "$SYS_DIR/oh-my-zsh" ]]; then
+    # Ensure a legacy install is migrated before requiring the new layout.
+    if is_legacy_layout && [[ ! -f "$PFY_MANIFEST" ]]; then
+        migrate_legacy
+    fi
+    if [[ ! -d "$PFY_SYS_DIR" || ! -f "$PFY_RUNTIME_ZSHRC" ]]; then
         echo -e " \e[1;31m[!] Error: Run Quick Setup first.\e[0m"
         press_enter
         return 1
@@ -138,26 +145,6 @@ sed_i() {
         sed -i '' "$@"
     else
         sed -i "$@"
-    fi
-}
-
-# Upsert a KEY="value" line in ~/.username without clobbering other keys.
-# Preserves unrelated preferences (e.g. CAT, CHANNEL) across updates.
-# Uses awk so values containing &, |, \ or " are safe (no sed replacement parsing).
-set_username_pref() {
-    local key="$1"
-    local value="$2"
-    [[ -f "$HOME/.username" ]] || { echo "" > "$HOME/.username"; chmod 600 "$HOME/.username" 2>/dev/null; }
-    if grep -q "^$key=" "$HOME/.username" 2>/dev/null; then
-        awk -v k="$key" -v v="$value" '
-            BEGIN { done = 0 }
-            $0 ~ "^" k "=" { printf "%s=\"%s\"\n", k, v; done = 1; next }
-            { print }
-            END { if (!done) printf "%s=\"%s\"\n", k, v }
-        ' "$HOME/.username" > "$HOME/.username.tmp"
-        mv "$HOME/.username.tmp" "$HOME/.username"
-    else
-        echo "$key=\"$value\"" >> "$HOME/.username"
     fi
 }
 

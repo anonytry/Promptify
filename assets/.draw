@@ -25,8 +25,10 @@ done
 
 # Load preference if name not passed
 if [[ -z "${NAME// /}" ]]; then
-    if [[ -f ~/.username ]]; then
-        NAME=$(grep "^NAME=" ~/.username | cut -d= -f2- | tr -d '"')
+    PREF_FILE="$HOME/.promptify/userdata/prefs.conf"
+    [[ -f "$PREF_FILE" ]] || PREF_FILE="$HOME/.username"
+    if [[ -f "$PREF_FILE" ]]; then
+        NAME=$(grep "^NAME=" "$PREF_FILE" | head -1 | cut -d= -f2- | tr -d '"')
     fi
 fi
 [[ -z "${NAME// /}" ]] && NAME="Promptify"
@@ -38,6 +40,9 @@ fi
 TERM_W=$(tput cols)
 P_DIR="$PROMPTIFY_DIR"
 [[ -z "$P_DIR" ]] && P_DIR="$HOME/.promptify"
+# New APK-style layout keeps assets inside core/assets; the old flat layout
+# (~/.promptify/assets) is still resolved for legacy installs.
+[[ -d "$P_DIR/core/assets" ]] && P_DIR="$P_DIR/core"
 F_SHADOW="$P_DIR/assets/ASCII-Shadow.flf"
 
 if ! command -v figlet &> /dev/null; then
@@ -71,8 +76,10 @@ if [[ -n "$FORCE_FONT" ]]; then
         *)          USE_FONT="$F_SHADOW" ;;
     esac
 else
-    if [[ -f ~/.username ]]; then
-        PREF_FONT=$(grep "^FONT=" ~/.username | cut -d= -f2- | tr -d '"')
+    PREF_FILE="$HOME/.promptify/userdata/prefs.conf"
+    [[ -f "$PREF_FILE" ]] || PREF_FILE="$HOME/.username"
+    if [[ -f "$PREF_FILE" ]]; then
+        PREF_FONT=$(grep "^FONT=" "$PREF_FILE" | head -1 | cut -d= -f2- | tr -d '"')
     fi
     case "${PREF_FONT:-auto}" in
         "shadow")   USE_FONT="$F_SHADOW" ;;

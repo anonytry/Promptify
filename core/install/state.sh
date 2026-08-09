@@ -7,7 +7,24 @@ BUNDLED_FONTS=("ASCII-Shadow.flf" "slant.flf" "banner.flf" "smpoison.flf" "graff
 # uninstall may only restore a saved original, never delete them outright.
 PACKAGE_OWNED_FONTS=("slant.flf" "banner.flf")
 
-STATE_FILE="$SYS_DIR/.install-state"
+STATE_FILE="$PFY_STATE"
+
+# Read a recorded install fact (prints nothing when unset).
+state_fact() {
+    local key="$1"
+    grep "^${key}=" "$STATE_FILE" 2>/dev/null | head -1 | cut -d= -f2-
+}
+
+# Record a one-time install fact (never overwritten once set).
+record_install_fact() {
+    local key="$1" value="$2"
+    [[ -d "$SYS_DIR" ]] || mkdir -p "$SYS_DIR"
+    touch "$STATE_FILE"
+    if ! grep -q "^${key}=" "$STATE_FILE" 2>/dev/null; then
+        echo "${key}=${value}" >> "$STATE_FILE"
+    fi
+    return 0
+}
 
 # Record what Promptify changed so uninstall can reverse exactly that.
 # Idempotent: existing keys are never overwritten (e.g. PRE_SHELL must keep the
@@ -54,6 +71,7 @@ record_install_state() {
             echo "DESKTOP_FONT=0" >> "$STATE_FILE"
         fi
     fi
+    return 0
 }
 
 # Record the sha256 of every file Promptify writes into user-owned locations so
@@ -137,7 +155,7 @@ backup_bundled_figlet_fonts() {
     local dir
     dir=$(figlet_font_dirs)
     [[ -d "$dir" ]] || return 0
-    local backup_dir="$SYS_DIR/figlet-backups"
+    local backup_dir="$PFY_BACKUP_FIGLET"
     mkdir -p "$backup_dir"
     local f
     for f in "${BUNDLED_FONTS[@]}"; do
@@ -156,7 +174,7 @@ remove_bundled_figlet_fonts() {
     local dir
     dir=$(figlet_font_dirs)
     [[ -d "$dir" ]] || return 0
-    local backup_dir="$SYS_DIR/figlet-backups"
+    local backup_dir="$PFY_BACKUP_FIGLET"
     local sudoprefix=""
     [[ "$OS_TYPE" != "termux" ]] && sudoprefix="$SUDO "
     local f owned=false x

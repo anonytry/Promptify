@@ -23,8 +23,8 @@ manage_banner() {
                     # shellcheck disable=SC2034
                     USE_BANNER="true"
                     
-                    set_username_pref NAME "$BANNER_NAME"
-                    set_username_pref FONT "$CUR_FONT"
+                    set_pref NAME "$BANNER_NAME"
+                    set_pref FONT "$CUR_FONT"
                     touch "$HOME/.draw" 2>/dev/null
                     
                     load_prefs

@@ -37,7 +37,7 @@ manage_cat() {
         # shellcheck disable=SC2034
         CUR_CAT_STYLE="$style"
 
-        set_username_pref CAT "$style"
+        set_pref CAT "$style"
 
         load_prefs
         refresh_ui

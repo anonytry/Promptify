@@ -34,28 +34,28 @@ dep_status() {
             fi
             ;;
         "omz")
-            if [[ -f "$SYS_DIR/oh-my-zsh/oh-my-zsh.sh" ]]; then
+            if [[ -f "$PFY_DEPS_OMZ/oh-my-zsh.sh" ]]; then
                 echo "ok"
-            elif [[ -d "$SYS_DIR/oh-my-zsh" ]]; then
+            elif [[ -d "$PFY_DEPS_OMZ" ]]; then
                 echo "broken"
             else
                 echo "missing"
             fi
             ;;
         "plugins")
-            if [[ -f "$SYS_DIR/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" &&
-                  -f "$SYS_DIR/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
+            if [[ -f "$PFY_DEPS_PLUGINS/zsh-autosuggestions/zsh-autosuggestions.zsh" &&
+                  -f "$PFY_DEPS_PLUGINS/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
                 echo "ok"
-            elif [[ -d "$SYS_DIR/plugins" ]]; then
+            elif [[ -d "$PFY_DEPS_PLUGINS" ]]; then
                 echo "broken"
             else
                 echo "missing"
             fi
             ;;
         "assets")
-            if [[ ! -f "$SYS_DIR/assets/.draw" ]]; then
+            if [[ ! -f "$PFY_CORE/assets/.draw" ]]; then
                 echo "missing"
-            elif ! cmp -s "$INSTALL_DIR/assets/.draw" "$SYS_DIR/assets/.draw"; then
+            elif ! cmp -s "$INSTALL_DIR/assets/.draw" "$PFY_CORE/assets/.draw"; then
                 echo "outdated"
             else
                 echo "ok"
@@ -114,7 +114,7 @@ manage_dependencies() {
         for choice in $choices; do
             action="${actions[$choice]}"
             if [[ "$action" == "install_plugins" ]]; then
-                if [[ -d "$SYS_DIR/oh-my-zsh" ]]; then
+                if [[ -d "$PFY_DEPS_OMZ" ]]; then
                     install_plugins || ok=false
                 else
                     center_print "\e[1;31m[!] Error: Install OMZ first to enable plugins.\e[0m"

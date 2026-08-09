@@ -23,8 +23,8 @@ manage_font() {
         # shellcheck disable=SC2034
         CUR_FONT="$selected_font"
         
-        set_username_pref NAME "$BANNER_NAME"
-        set_username_pref FONT "$CUR_FONT"
+        set_pref NAME "$BANNER_NAME"
+        set_pref FONT "$CUR_FONT"
         
         load_prefs
         calculate_ui_width

@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-08-09
+
+### Added
+- **New APK/AOSP-style layout (`~/.promptify/`)**: Every directory now has one fixed job — `core/` (the program, a full git clone), `deps/` (Oh-My-Zsh + plugins, write-once), `userdata/` (prefs), `runtime/` (generated shell configs), `backup/` (install snapshot + self-contained uninstaller + version archives). Updates replace only `core/`; deps and userdata are never touched.
+- **Snapshot "time-travel" install**: The very first install captures every file Promptify will touch (byte-exact copies + sha256 in `backup/system/MANIFEST`) plus facts about your original shell. Uninstall restores the machine to exactly how it was before — and reports PASS/FAIL after a full verify.
+- **Works with any pre-existing config (CachyOS fix)**: Your original `~/.zshrc` is snapshotted and sourced first, unchanged; Promptify's prompt wins purely by clearing `RPROMPT` and registering its `precmd` hook last. No theme-specific code, works over p10k, starship, omz, or anything else. Powerlevel10k's first-run wizard is detected and skipped **only with your consent**.
+- **One-line managed profile**: `~/.zshrc` is now a single guarded `source ~/.promptify/runtime/zshrc` line (plus comment). Everything lives in `~/.promptify`, so uninstall leaves zero junk.
+- **Self-contained uninstaller** (`~/.promptify/backup/uninstall.sh`): generated at install, restores your config even if the program files are gone; `--keep-data` keeps your snapshot/settings.
+- **Doctor**: New main-menu option — a 5-point health check (layout, snapshot integrity, runtime syntax, deps, managed profile + global command) with one-command repair.
+- **Downgrade**: "Restore Older Version" lists archived `core/` tarballs from `backup/archives/` (kept 5 deep) and restores any previous version, re-applying your settings.
+- **Legacy migration**: Installs from ≤1.4.3 (inline-block `~/.zshrc`) auto-migrate to the new layout on next run — original config recovered, deps moved, prefs converted.
+
+### Changed
+- Uninstall now restores your original shell config from the snapshot first (time-travel), then cleans UI/assets and removes the directory, then runs a full verification.
+- First-run setup captures the snapshot before touching anything, and asks about the p10k wizard as a consent step.
+- Oh-My-Zsh/plugins live in `deps/` and are only installed when your original config doesn't already load one.
+
+---
+
 ## [1.4.3] - 2026-08-05
 
 ### Added

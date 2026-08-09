@@ -25,6 +25,17 @@ while [ -h "$SOURCE" ]; do
 done
 SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" 2>/dev/null && pwd )"
 
+# APK/AOSP-style layout constants (needed before bootstrap so a persistent
+# install is found even when this script is launched from elsewhere).
+SYS_DIR="$HOME/.promptify"
+if [[ -f "$SCRIPT_DIR/core/env/layout.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "$SCRIPT_DIR/core/env/layout.sh"
+else
+    PFY_CORE="$SYS_DIR/core"
+fi
+export SYS_DIR
+
 # Parse flags
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -54,6 +65,19 @@ fi
 
 if [[ "$IS_LOCAL" == "false" ]]; then
     if [[ -n "$INSTALL_DIR" ]]; then
+        IS_LOCAL=true
+    fi
+fi
+
+# Persistent install fallback: launched via the global 'promptify' wrapper or a
+# path under ~/.promptify, so INSTALL_DIR may be empty. Resolve to the app dir
+# (core/) or a legacy flat install before falling through to bootstrap.
+if [[ -z "$INSTALL_DIR" ]]; then
+    if [[ -f "$PFY_CORE/promptify.sh" ]]; then
+        INSTALL_DIR="$PFY_CORE"
+        IS_LOCAL=true
+    elif [[ -f "$SYS_DIR/promptify.sh" ]]; then
+        INSTALL_DIR="$SYS_DIR"
         IS_LOCAL=true
     fi
 fi
@@ -212,7 +236,6 @@ if [[ "$IS_LOCAL" == "true" && ! -w "$(pwd)" ]]; then
 fi
 
 export INSTALL_DIR
-export SYS_DIR="$HOME/.promptify"
 export CONFIRM_ALL
 export SILENT_MODE
 
@@ -272,10 +295,14 @@ update_status() {
     STATUS_ZSH=$(check_status "zsh")
     # shellcheck disable=SC2034
     STATUS_PKGS=$(check_status "figlet" "git" "lolcat")
+    # OMZ: bundled (deps/) OR any system-wide oh-my-zsh counts as available
+    if [[ -f "$PFY_DEPS_OMZ/oh-my-zsh.sh" || -f "/usr/share/oh-my-zsh/oh-my-zsh.sh" ]]; then
+        STATUS_OMZ="\033[1;32m✔\033[0m"
+    else
+        STATUS_OMZ="\033[1;31m✘\033[0m"
+    fi
     # shellcheck disable=SC2034
-    STATUS_OMZ=$(check_path "$SYS_DIR/oh-my-zsh")
-    # shellcheck disable=SC2034
-    STATUS_PLUG=$(check_path "$SYS_DIR/plugins/zsh-autosuggestions")
+    STATUS_PLUG=$(check_path "$PFY_DEPS_PLUGINS/zsh-autosuggestions")
 }
 
 update_status
@@ -297,7 +324,6 @@ if [[ "$POST_UPDATE" == "true" ]]; then
     clear
     promptify_header
     echo -e "\n\e[1;34m[*] Applying your settings...\e[0m"
-    sync_assets 2>/dev/null
     if check_setup; then
         refresh_ui
     fi
@@ -320,6 +346,7 @@ while true; do
         "Customization" \
         "Dependencies" \
         "Updates" \
+        "Doctor" \
         "Uninstall" \
         "Exit")
 
@@ -344,8 +371,9 @@ while true; do
             manage_dependencies; update_status 
             ;;
         4) updates_menu; update_status ;;
-        5) uninstall_promptify ;;
-        6) 
+        5) doctor_menu ;;
+        6) uninstall_promptify ;;
+        7) 
             if confirm_action "Exit Promptify?" "y"; then
                 exit_script
             fi

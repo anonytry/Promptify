@@ -26,7 +26,7 @@ manage_prompt() {
         # shellcheck disable=SC2034
         CUR_PROMPT_STYLE="$style"
 
-        set_username_pref STYLE "$style"
+        set_pref STYLE "$style"
 
         load_prefs
         refresh_ui

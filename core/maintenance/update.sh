@@ -7,6 +7,7 @@ updates_menu() {
         UPD_CHOICE=$(radio_menu "Updates & Channel" "" "" 0 -1 \
             "Check for Updates" \
             "Restore Previous Version" \
+            "Restore Older Version" \
             "$ch_label" \
             "Back")
 
@@ -14,8 +15,9 @@ updates_menu() {
             "CANCELLED") return ;;
             0) check_updates; return ;;
             1) rollback_update; return ;;
-            2) manage_channel; return ;;
-            3) return ;;
+            2) downgrade_menu; return ;;
+            3) manage_channel; return ;;
+            4) return ;;
         esac
     done
 }
@@ -102,9 +104,19 @@ perform_update() {
     # Keep the current version around so it can be restored if needed
     save_last_good "$CUR_CHANNEL"
 
+    # Archive the running app (core/) before swapping it, so "Restore Older
+    # Version" can bring it back. Only for persistent installs.
+    if [[ "$INSTALL_DIR" == "$PFY_CORE" && -d "$PFY_CORE" ]]; then
+        mkdir -p "$PFY_BACKUP_ARCHIVES"
+        local stamp
+        stamp=$(date +%Y%m%d-%H%M%S)
+        tar czf "$PFY_BACKUP_ARCHIVES/promptify-v${VERSION}-${stamp}.tar.gz" -C "$PFY_SYS_DIR" core 2>/dev/null
+        prune_archives
+    fi
+
     echo -e "\e[1;34m[*] Updating to $label...\e[0m"
     if git -C "$INSTALL_DIR" reset --hard "origin/$CHANNEL_BRANCH"; then
-        if [[ "$INSTALL_DIR" != "$SYS_DIR" && -d "$SYS_DIR" ]]; then
+        if [[ "$INSTALL_DIR" != "$PFY_CORE" && -d "$PFY_CORE" ]]; then
             sync_to_sys_dir
         fi
         echo -e "\e[1;32m[✔] Update complete!\e[0m"
@@ -113,6 +125,16 @@ perform_update() {
         echo -e "\e[1;31m[!] Update failed.\e[0m"
         press_enter
     fi
+}
+
+# Keep only the 5 most recent core archives.
+prune_archives() {
+    local archives
+    mapfile -t archives < <(ls -1t "$PFY_BACKUP_ARCHIVES"/promptify-v*.tar.gz 2>/dev/null)
+    local i
+    for ((i = 5; i < ${#archives[@]}; i++)); do
+        rm -f "${archives[$i]}" 2>/dev/null
+    done
 }
 
 # Restore the previously saved version (phone-style rollback)
@@ -170,15 +192,13 @@ post_update_exec() {
     exec bash "$INSTALL_DIR/promptify.sh" "${args[@]}"
 }
 
-# Sync a non-persistent clone into the system dir without leaving stale files
-# (keeps runtime dirs like oh-my-zsh and plugins intact).
+# Sync a non-persistent clone into the app dir (core/) without leaving stale
+# files (keeps deps/, userdata/, runtime/ and backups intact).
 sync_to_sys_dir() {
-    local src="$INSTALL_DIR/" dst="$SYS_DIR/"
+    local src="$INSTALL_DIR/" dst="$PFY_CORE/"
+    mkdir -p "$dst"
     if command -v rsync &>/dev/null; then
-        rsync -a --delete \
-            --exclude='oh-my-zsh/' --exclude='plugins/' \
-            --exclude='.install-state' --exclude='figlet-backups/' \
-            "$src" "$dst" 2>/dev/null
+        rsync -a --delete "$src" "$dst" 2>/dev/null || echo -e "\e[1;33m[*] sync note: final position may differ per variant\e[0m"
     else
         cp -rf "$src" "$dst" 2>/dev/null
     fi

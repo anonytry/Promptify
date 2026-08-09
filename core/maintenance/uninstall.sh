@@ -7,40 +7,39 @@ uninstall_promptify() {
         return
     fi
 
+    # If the self-contained uninstaller exists, prefer it: it restores the
+    # snapshot even if the program files are gone, then removes everything.
+    if [[ -f "$PFY_UNINSTALLER" ]]; then
+        if confirm_action "Run the self-contained uninstaller (recommended)? This fully restores your system." "y"; then
+            clear
+            bash "$PFY_UNINSTALLER"
+            press_enter
+            exit 0
+        fi
+    fi
+
     # Load what install recorded so uninstall can reverse it exactly
     read_install_state
 
-    # 1. Auto-detect components for checkboxes
-    local prof_sel="" && is_promptify_installed && prof_sel="|selected"
-    local sys_sel="" && [[ -d "$SYS_DIR" ]] && sys_sel="|selected"
-
-    # UI cleanup: Termux UI files or bundled figlet fonts present, or a desktop
-    # font was applied.
+    # Auto-detect components for checkboxes. The original config restore is
+    # always done (it is the whole point of the snapshot), so it isn't a
+    # checkbox.
     local ui_sel=""
     if has_termux_ui_changes || has_bundled_figlet_fonts || [[ "$DESKTOP_FONT" == "1" ]]; then
         ui_sel="|selected"
     fi
 
-    local asset_sel="" && [[ -f "$HOME/.draw" || -f "$HOME/.username" ]] && asset_sel="|selected"
+    local asset_sel=""
+    [[ -f "$HOME/.draw" || -f "$HOME/.username" ]] && asset_sel="|selected"
 
-    # 2. Build Dynamic Menu Options (UI cleanup before dir removal so figlet
-    #    backups living inside $SYS_DIR are still readable)
-    local opts=()
-    local actions=()
+    local opts=(
+        "Revert Terminal UI Settings$ui_sel"
+        "Remove Home Assets$asset_sel"
+        "Remove Promptify System Directory|selected"
+    )
 
-    opts+=("Revert Shell Profile Config$prof_sel")
-    actions+=(clean_shell_profile)
-
-    opts+=("Revert Terminal UI Settings$ui_sel")
-    actions+=(clean_ui_settings)
-
-    opts+=("Remove Home Assets$asset_sel")
-    actions+=(clean_assets)
-
-    opts+=("Remove Promptify System Directory$sys_sel")
-    actions+=(clean_sys_dir)
-
-    # 3. Selection Menu
+    # Build Dynamic Menu Options (UI cleanup before dir removal so figlet
+    # backups living inside $SYS_DIR are still readable)
     local choices
     choices=$(checkbox_menu "Uninstall Management" "" "${opts[@]}")
 
@@ -52,13 +51,27 @@ uninstall_promptify() {
 
     echo -e "\n\e[1;34m[*] Starting uninstallation process...\e[0m"
 
+    # 1. Time-travel: restore the original shell config FIRST (the snapshot
+    #    lives inside $SYS_DIR, so it must be read before the directory goes).
+    if [[ -f "$PFY_MANIFEST" ]]; then
+        center_print "\e[1;34m[*] \e[0mRestoring your original config from the install snapshot..."
+        restore_snapshot
+    else
+        # Legacy inline-block install (no snapshot) — strip the old markers.
+        clean_shell_profile
+    fi
+
+    # 2. Run the user's chosen cleanup (UI before directory removal)
     local action
     for choice in $choices; do
-        action="${actions[$choice]}"
-        $action
+        case "$choice" in
+            0) clean_ui_settings ;;
+            1) clean_assets ;;
+            2) clean_sys_dir ;;
+        esac
     done
 
-    # 4. Restore pre-install shell — only offered when the current default
+    # 3. Restore pre-install shell — only offered when the current default
     #    shell actually differs from what we recorded before install.
     local target_shell="${PRE_SHELL:-bash}"
     local cur_shell
@@ -74,6 +87,8 @@ uninstall_promptify() {
         fi
     fi
 
+    # 4. Full verification
+    verify_cleanup
     center_print "\e[1;32m[✔] Cleanup Complete!\e[0m"
 
     press_enter

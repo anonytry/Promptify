@@ -5,8 +5,10 @@ FONT_NAME="JetBrainsMono Nerd Font"
 # Install Nerd Font to user fonts dir for desktop terminals
 install_user_font() {
     local font_dir="$HOME/.local/share/fonts"
+    local target="$font_dir/JetBrainsMonoNerdFont-Regular.ttf"
     mkdir -p "$font_dir" 2>/dev/null || true
-    cp "$INSTALL_DIR/assets/font.ttf" "$font_dir/JetBrainsMonoNerdFont-Regular.ttf" 2>/dev/null || true
+    snapshot_preserve "$target"
+    cp "$INSTALL_DIR/assets/font.ttf" "$target" 2>/dev/null || true
     command -v fc-cache &>/dev/null && fc-cache -f "$font_dir" >/dev/null 2>&1 || true
 }
 
@@ -22,14 +24,16 @@ set_terminal_font_line() {
     fi
 }
 
-# Auto-set JetBrainsMono Nerd Font in common desktop terminals
+# Auto-set JetBrainsMono Nerd Font in common desktop terminals. Originals are
+# captured by the snapshot engine (snapshot_preserve) BEFORE editing, so
+# uninstall restores them exactly — no .bak junk is ever left behind.
 configure_terminal_font() {
     # Kitty
     if command -v kitty &>/dev/null || [[ -d "$HOME/.config/kitty" ]]; then
         mkdir -p "$HOME/.config/kitty"
         local kc="$HOME/.config/kitty/kitty.conf"
         [[ -f "$kc" ]] || touch "$kc"
-        backup_file "$kc"
+        snapshot_preserve "$kc"
         set_terminal_font_line "$kc" '^font_family.*' "font_family $FONT_NAME"
     fi
 
@@ -38,7 +42,7 @@ configure_terminal_font() {
     [[ -f "$HOME/.config/alacritty/alacritty.toml" ]] && alc="$HOME/.config/alacritty/alacritty.toml"
     [[ -f "$HOME/.config/alacritty/alacritty.yml" ]] && alc="$HOME/.config/alacritty/alacritty.yml"
     if [[ -n "$alc" ]]; then
-        backup_file "$alc"
+        snapshot_preserve "$alc"
         if grep -q '^\[font' "$alc" 2>/dev/null; then
             sed_i -E 's/^family = .*/family = "'"$FONT_NAME"'"/' "$alc" 2>/dev/null
         else
@@ -46,12 +50,18 @@ configure_terminal_font() {
         fi
     fi
 
-    # GNOME Terminal
+    # GNOME Terminal (gsettings has no files — record the old value to restore)
     if command -v gsettings &>/dev/null; then
         local prof
         prof=$(gsettings get org.gnome.Terminal.ProfilesList default 2>/dev/null | tr -d "'")
         if [[ -n "$prof" && "$prof" != "[]" ]]; then
-            gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$prof/" font "$FONT_NAME 12" 2>/dev/null || true
+            local gkey="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$prof/"
+            local old_val
+            old_val=$(gsettings get "$gkey" font 2>/dev/null)
+            if [[ -n "$old_val" && ! -f "$PFY_BACKUP_SYSTEM/gsettings-font.txt" ]]; then
+                printf '%s\n%s\n' "$gkey" "$old_val" > "$PFY_BACKUP_SYSTEM/gsettings-font.txt" 2>/dev/null
+            fi
+            gsettings set "$gkey" font "$FONT_NAME 12" 2>/dev/null || true
         fi
     fi
 
@@ -60,7 +70,7 @@ configure_terminal_font() {
         local p
         for p in "$HOME"/.local/share/konsole/*.profile; do
             [[ -f "$p" ]] || continue
-            backup_file "$p"
+            snapshot_preserve "$p"
             if grep -q '^Font=' "$p" 2>/dev/null; then
                 sed_i 's/^Font=.*/Font='"$FONT_NAME"',12/' "$p" 2>/dev/null
             else
@@ -71,7 +81,7 @@ configure_terminal_font() {
 
     # XFCE4 Terminal
     if [[ -f "$HOME/.config/xfce4/terminal/terminalrc" ]]; then
-        backup_file "$HOME/.config/xfce4/terminal/terminalrc"
+        snapshot_preserve "$HOME/.config/xfce4/terminal/terminalrc"
         set_terminal_font_line "$HOME/.config/xfce4/terminal/terminalrc" '^FontName=.*' "FontName=$FONT_NAME 12"
     fi
 }
