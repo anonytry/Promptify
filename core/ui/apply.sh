@@ -62,41 +62,10 @@ setup_ui() {
     record_install_state
 
     local asset_dir="$INSTALL_DIR/assets"
-    local bundled_fonts=("ASCII-Shadow.flf" "slant.flf" "banner.flf" "smpoison.flf" "graffiti.flf")
 
     # ---- Terminal UI (Termux) / desktop font — snapshotted before writing ----
-    if [[ "$OS_TYPE" == "termux" ]]; then
-        mkdir -p "$HOME/.termux"
-        snapshot_preserve "$HOME/.termux/colors.properties"
-        snapshot_preserve "$HOME/.termux/font.ttf"
-        snapshot_preserve "$HOME/.termux/termux.properties"
-
-        cp "$asset_dir/colors.properties" "$HOME/.termux/" || true
-        cp "$asset_dir/font.ttf" "$HOME/.termux/" || true
-
-        # Android properties
-        local major_ver
-        major_ver=$(echo "$ANDROID_VER" | grep -oE '^[0-9]+' || echo "0")
-        if [[ "$major_ver" -gt 0 && "$major_ver" -le 7 ]]; then
-            cp "$asset_dir/termux.properties2" "$HOME/.termux/termux.properties" || true
-        else
-            cp "$asset_dir/termux.properties" "$HOME/.termux/" || true
-        fi
-
-        snapshot_created "$HOME/.termux/colors.properties"
-        snapshot_created "$HOME/.termux/font.ttf"
-        snapshot_created "$HOME/.termux/termux.properties"
-
-        mkdir -p "$PREFIX/share/figlet"
-        backup_bundled_figlet_fonts
-        local font_file
-        for font_file in "${bundled_fonts[@]}"; do
-            if [[ ! -f "$PREFIX/share/figlet/$font_file" ]] || ! cmp -s "$asset_dir/$font_file" "$PREFIX/share/figlet/$font_file"; then
-                cp "$asset_dir/$font_file" "$PREFIX/share/figlet/" 2>/dev/null || true
-            fi
-        done
-        termux-reload-settings 2>/dev/null || true
-    else
+    sync_termux_ui "$asset_dir"
+    if [[ "$OS_TYPE" != "termux" ]]; then
         if command -v figlet &> /dev/null; then
             local figlet_dir="/usr/share/figlet"
             [[ -d "/usr/share/figlet/fonts" ]] && figlet_dir="/usr/share/figlet/fonts"
@@ -105,7 +74,7 @@ setup_ui() {
             # missing or stale, so repeated applies never prompt for sudo again.
             local need_font_write=false
             local font_file
-            for font_file in "${bundled_fonts[@]}"; do
+            for font_file in "${BUNDLED_FONTS[@]}"; do
                 if [[ ! -f "$figlet_dir/$font_file" ]] || ! cmp -s "$asset_dir/$font_file" "$figlet_dir/$font_file"; then
                     need_font_write=true
                     break
@@ -118,7 +87,7 @@ setup_ui() {
                     $SUDO mkdir -p "$figlet_dir" 2>/dev/null || true
                 fi
                 backup_bundled_figlet_fonts
-                for font_file in "${bundled_fonts[@]}"; do
+                for font_file in "${BUNDLED_FONTS[@]}"; do
                     if [[ ! -f "$figlet_dir/$font_file" ]] || ! cmp -s "$asset_dir/$font_file" "$figlet_dir/$font_file"; then
                         $SUDO cp "$asset_dir/$font_file" "$figlet_dir/" 2>/dev/null || true
                     fi
@@ -150,7 +119,7 @@ setup_ui() {
     if [[ "$INSTALL_DIR" != "$PFY_CORE" && -d "$PFY_CORE" ]]; then
         mkdir -p "$PFY_CORE/assets"
         local font_file
-        for font_file in "${bundled_fonts[@]}"; do
+        for font_file in "${BUNDLED_FONTS[@]}"; do
             cp "$asset_dir/$font_file" "$PFY_CORE/assets/" 2>/dev/null
         done
         cp "$asset_dir/termux.properties" "$PFY_CORE/assets/" 2>/dev/null

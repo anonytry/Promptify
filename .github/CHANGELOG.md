@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.1] - 2026-08-13
+
+### Fixed
+- **Startup banner swallowed on fresh installs**: `.draw` renders to stderr, but the managed profile sources the runtime with `2>/dev/null`, so the banner never appeared. The runtime now merges stderr into stdout for the banner call (zsh and bash).
+- **Doctor deps check wrong when bundled deps partial**: `[[ A && B || C ]]` was parsed as `(A && B) || C`, falsely reporting OK when only the system Oh-My-Zsh existed.
+- **`prefs.conf` started with a blank line** (empty first write), which confused parsers.
+- **Update left stale files when `rsync` was missing**: the plain `cp` fallback now removes files in `core/` that no longer exist upstream (portable `--delete`).
+- **Snapshot hash never refreshed for re-applied files**: uninstall could not verify/remove Promptify-created files whose content changed in a newer version (e.g. `.draw`). The recorded hash is now updated in place.
+- **Hardcoded backup path in generated profiles**: runtime config now uses `$PFY_BACKUP_FILES`, so it works with any install directory.
+- Removed dead code (`backup_file`, `channel_url`, redundant `version.sh` source).
+
+### Changed
+- **Bundled font list is now a single source of truth** (`core/env/fonts.sh`); the duplicated lists in install/apply/uninstall were removed.
+- **Termux UI setup (colors, font, Android properties, figlet fonts) is now one shared function** used by both setup and "Reload & Apply UI".
+- Removed the temporary `tests/` directory (development scaffolding, not part of the product).
+
 ## [1.5.0] - 2026-08-09
 
 ### Added

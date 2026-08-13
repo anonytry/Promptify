@@ -87,7 +87,7 @@ generate_runtime() {
 
         if [[ -n "$zsh_backup" && -f "$PFY_BACKUP_FILES/$zsh_backup" ]]; then
             echo "# Your original shell config (unchanged — loaded first)"
-            echo "source \"$HOME/.promptify/backup/system/files/$zsh_backup\""
+            echo "source \"$PFY_BACKUP_FILES/$zsh_backup\""
             echo
         fi
 
@@ -113,7 +113,9 @@ generate_runtime() {
         if [[ "$show_banner" == "true" ]]; then
             echo "# Startup banner"
             echo "printf '\\033[2J\\033[H'"
-            echo "[[ -f \"\$HOME/.draw\" ]] && PROMPTIFY_DIR=\"\$PROMPTIFY_DIR\" bash \"\$HOME/.draw\""
+            echo "# .draw renders to stderr (menus draw there), but the managed profile sources"
+            echo "# this runtime with 2>/dev/null — so merge stderr into stdout to survive it."
+            echo "[[ -f \"\$HOME/.draw\" ]] && PROMPTIFY_DIR=\"\$PROMPTIFY_DIR\" bash \"\$HOME/.draw\" 2>&1"
             echo
         fi
 
@@ -156,7 +158,7 @@ generate_runtime() {
 
         if [[ -n "$bash_backup" && -f "$PFY_BACKUP_FILES/$bash_backup" ]]; then
             echo "# Your original bash config (unchanged — loaded first)"
-            echo "source \"$HOME/.promptify/backup/system/files/$bash_backup\""
+            echo "source \"$PFY_BACKUP_FILES/$bash_backup\""
             echo
         fi
 
@@ -169,7 +171,7 @@ generate_runtime() {
         echo
         if [[ "$show_banner" == "true" ]]; then
             echo "# Show the banner if staying in Bash"
-            echo "[[ -f \"\$HOME/.draw\" ]] && PROMPTIFY_DIR=\"\$PROMPTIFY_DIR\" bash \"\$HOME/.draw\""
+            echo "[[ -f \"\$HOME/.draw\" ]] && PROMPTIFY_DIR=\"\$PROMPTIFY_DIR\" bash \"\$HOME/.draw\" 2>&1"
             echo
         fi
         echo "# Aliases"

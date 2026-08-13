@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Bundled figlet fonts installed by Promptify (shared by install + uninstall)
-BUNDLED_FONTS=("ASCII-Shadow.flf" "slant.flf" "banner.flf" "smpoison.flf" "graffiti.flf")
+# BUNDLED_FONTS lives in core/env/fonts.sh (single source of truth).
 
 # Of those, the figlet package itself ships these — Promptify overwrites them, so
 # uninstall may only restore a saved original, never delete them outright.
@@ -163,6 +162,43 @@ backup_bundled_figlet_fonts() {
             cp "$dir/$f" "$backup_dir/$f" 2>/dev/null
         fi
     done
+}
+
+# Apply the Termux UI (colors, font, Android properties, figlet fonts). Shared by
+# the setup installer and "Reload & Apply UI" so the block exists once. Snapshots
+# are taken before writing; idempotent re-applies never re-capture.
+sync_termux_ui() {
+    [[ "$OS_TYPE" == "termux" ]] || return 0
+    local asset_dir="${1:-$INSTALL_DIR/assets}"
+    mkdir -p "$HOME/.termux"
+    snapshot_preserve "$HOME/.termux/colors.properties"
+    snapshot_preserve "$HOME/.termux/font.ttf"
+    snapshot_preserve "$HOME/.termux/termux.properties"
+
+    cp "$asset_dir/colors.properties" "$HOME/.termux/" || true
+    cp "$asset_dir/font.ttf" "$HOME/.termux/" || true
+
+    local major_ver
+    major_ver=$(echo "$ANDROID_VER" | grep -oE '^[0-9]+' || echo "0")
+    if [[ "$major_ver" -gt 0 && "$major_ver" -le 7 ]]; then
+        cp "$asset_dir/termux.properties2" "$HOME/.termux/termux.properties" || true
+    else
+        cp "$asset_dir/termux.properties" "$HOME/.termux/" || true
+    fi
+
+    snapshot_created "$HOME/.termux/colors.properties"
+    snapshot_created "$HOME/.termux/font.ttf"
+    snapshot_created "$HOME/.termux/termux.properties"
+
+    mkdir -p "$PREFIX/share/figlet"
+    backup_bundled_figlet_fonts
+    local font_file
+    for font_file in "${BUNDLED_FONTS[@]}"; do
+        if [[ ! -f "$PREFIX/share/figlet/$font_file" ]] || ! cmp -s "$asset_dir/$font_file" "$PREFIX/share/figlet/$font_file"; then
+            cp "$asset_dir/$font_file" "$PREFIX/share/figlet/" 2>/dev/null || true
+        fi
+    done
+    termux-reload-settings 2>/dev/null || true
 }
 
 # Remove only what Promptify put in the figlet dir (never the package's fonts):

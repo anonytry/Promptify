@@ -58,7 +58,13 @@ doctor_menu() {
     fi
 
     # 4. Dependencies (bundled deps/)
-    if [[ -d "$PFY_DEPS_PLUGINS" && -f "$PFY_DEPS_OMZ/oh-my-zsh.sh" || -f "/usr/share/oh-my-zsh/oh-my-zsh.sh" ]]; then
+    local deps_ok=false
+    if [[ -d "$PFY_DEPS_PLUGINS" && -f "$PFY_DEPS_OMZ/oh-my-zsh.sh" ]]; then
+        deps_ok=true
+    elif [[ -f "/usr/share/oh-my-zsh/oh-my-zsh.sh" ]]; then
+        deps_ok=true
+    fi
+    if [[ "$deps_ok" == "true" ]]; then
         pass=$((pass + 1))
         echo -e " \e[1;32m[✔]\e[0m Dependencies: \e[1;32mok\e[0m (Oh-My-Zsh + plugins)"
     else

@@ -14,7 +14,7 @@ get_pref() {
 set_pref() {
     local key="$1" value="$2"
     mkdir -p "$PFY_USERDATA"
-    [[ -f "$PFY_PREFS" ]] || { echo "" > "$PFY_PREFS"; chmod 600 "$PFY_PREFS" 2>/dev/null; }
+    [[ -f "$PFY_PREFS" ]] || { : > "$PFY_PREFS"; chmod 600 "$PFY_PREFS" 2>/dev/null; }
     if grep -q "^${key}=" "$PFY_PREFS" 2>/dev/null; then
         awk -v k="$key" -v v="$value" '
             BEGIN { done = 0 }

@@ -34,11 +34,6 @@ ensure_channel_remote() {
     fi
 }
 
-# Repo URL for a channel (defaults to active channel)
-channel_url() {
-    [[ "${1:-$CUR_CHANNEL}" == "testing" ]] && echo "$TESTING_URL" || echo "$STABLE_URL"
-}
-
 # Fetch both channels into local refs so their versions can be shown together
 fetch_channel_versions() {
     git -C "$INSTALL_DIR" fetch --quiet "$STABLE_URL" "$CHANNEL_BRANCH:refs/channels/stable" 2>/dev/null

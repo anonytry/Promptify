@@ -19,20 +19,6 @@ get_clean_len() {
     echo -n "${#clean}"
 }
 
-# Backup file
-backup_file() {
-    local file="$1"
-    local backup_ext="${2:-.bak}"
-    local backup_path="${file}${backup_ext}"
-    
-    if [[ -f "$file" ]]; then
-        if [[ ! -f "$backup_path" ]]; then
-            cp "$file" "$backup_path"
-            # Silently backup unless in debug/verbose (not implemented here)
-        fi
-    fi
-}
-
 # One-time, friendly heads-up before Promptify invokes sudo, so the password
 # prompt is never a surprise. Prints only once per session.
 SUDO_NOTICE_SHOWN=false

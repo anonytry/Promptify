@@ -201,5 +201,13 @@ sync_to_sys_dir() {
         rsync -a --delete "$src" "$dst" 2>/dev/null || echo -e "\e[1;33m[*] sync note: final position may differ per variant\e[0m"
     else
         cp -rf "$src" "$dst" 2>/dev/null
+        # Portable --delete: drop files in the app dir that no longer exist upstream
+        local rel dfile
+        while IFS= read -r -d '' dfile; do
+            rel="${dfile#"$dst"}"
+            if [[ ! -e "${src}${rel}" ]]; then
+                rm -rf "$dfile" 2>/dev/null
+            fi
+        done < <(find "$dst" -type f -print0)
     fi
 }

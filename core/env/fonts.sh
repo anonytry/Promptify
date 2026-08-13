@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Bundled figlet fonts shipped with Promptify (single source of truth).
+# Sourced before install/ui/maintenance modules, so it is visible everywhere.
+BUNDLED_FONTS=("ASCII-Shadow.flf" "slant.flf" "banner.flf" "smpoison.flf" "graffiti.flf")
+
 # Font style mapping (Index <-> Name)
 get_font_name() {
     case "$1" in

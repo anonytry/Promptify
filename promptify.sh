@@ -251,8 +251,6 @@ for dir in "${BOOT_DIRS[@]}"; do
     done
 done
 
-source "$INSTALL_DIR/core/env/version.sh"
-
 # 4. Global State & Signal Handling
 trap ':' SIGINT SIGTERM
 trap 'tput cnorm' EXIT

@@ -211,12 +211,11 @@ install_power_tools() {
 sync_assets() {
     echo -e "\033[1;34m[*] \033[32mSyncing UI Assets...\033[0m"
     local asset_dir="$INSTALL_DIR/assets"
-    local bundled_fonts=("ASCII-Shadow.flf" "slant.flf" "banner.flf" "smpoison.flf" "graffiti.flf")
 
     # Ensure the app dir (core/) has the assets
     mkdir -p "$PFY_CORE/assets"
     local font_file
-    for font_file in "${bundled_fonts[@]}"; do
+    for font_file in "${BUNDLED_FONTS[@]}"; do
         cp "$asset_dir/$font_file" "$PFY_CORE/assets/" 2>/dev/null || true
     done
     cp "$asset_dir/.draw" "$PFY_CORE/assets/.draw" 2>/dev/null || true
@@ -236,34 +235,7 @@ sync_assets() {
         apply_desktop_font
     fi
 
-    if [[ "$OS_TYPE" == "termux" ]]; then
-        mkdir -p "$HOME/.termux"
-        snapshot_preserve "$HOME/.termux/colors.properties"
-        snapshot_preserve "$HOME/.termux/font.ttf"
-        snapshot_preserve "$HOME/.termux/termux.properties"
-
-        cp "$asset_dir/colors.properties" "$HOME/.termux/" 2>/dev/null || true
-        cp "$asset_dir/font.ttf" "$HOME/.termux/" 2>/dev/null || true
-
-        local major_ver
-        major_ver=$(echo "$ANDROID_VER" | grep -oE '^[0-9]+' || echo "0")
-        if [[ "$major_ver" -gt 0 && "$major_ver" -le 7 ]]; then
-            cp "$asset_dir/termux.properties2" "$HOME/.termux/termux.properties" 2>/dev/null || true
-        else
-            cp "$asset_dir/termux.properties" "$HOME/.termux/" 2>/dev/null || true
-        fi
-
-        snapshot_created "$HOME/.termux/colors.properties"
-        snapshot_created "$HOME/.termux/font.ttf"
-        snapshot_created "$HOME/.termux/termux.properties"
-
-        # Install figlet fonts
-        mkdir -p "$PREFIX/share/figlet"
-        backup_bundled_figlet_fonts
-        for font_file in "${bundled_fonts[@]}"; do
-            cp "$asset_dir/$font_file" "$PREFIX/share/figlet/" 2>/dev/null || true
-        done
-    fi
+    sync_termux_ui "$asset_dir"
 
     record_install_state
 }

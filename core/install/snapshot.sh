@@ -53,12 +53,23 @@ snapshot_preserve() {
 }
 
 # Mark a file Promptify created (call right after writing it). Idempotent.
+# When an entry already exists (re-apply/update rewrote the file), refresh the
+# recorded hash so uninstall still matches the content we actually wrote.
 snapshot_created() {
     local path="$1"
     [[ -n "$path" && -f "$path" ]] || return 0
-    manifest_has "$path" && return 0
     local hash
     hash=$(sha256_of "$path")
+    if grep -q "^C|${path}|" "$PFY_MANIFEST" 2>/dev/null; then
+        awk -v p="$path" -v h="$hash" '
+            index($0, "C|" p "|") == 1 { $0 = "C|" p "|" h }
+            { print }
+        ' "$PFY_MANIFEST" > "$PFY_MANIFEST.tmp" 2>/dev/null
+        mv "$PFY_MANIFEST.tmp" "$PFY_MANIFEST"
+        return 0
+    fi
+    # Preserved files (P) are restored from backup, never C-marked.
+    manifest_has "$path" && return 0
     echo "C|${path}|${hash}" >> "$PFY_MANIFEST"
 }
 
