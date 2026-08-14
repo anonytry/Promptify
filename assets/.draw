@@ -159,13 +159,9 @@ if [[ "$FONT_DESCENT" == "0" ]]; then
     FINAL_LINES=("${FINAL_LINES[@]}")
 fi
 
-# 3. Box Dimensions (RESTORED V1 DYNAMIC SIZING + EXTRA BREATHING ROOM)
-# Increase base padding to +14 for better aesthetics
+# 3. Box Dimensions (CONTENT-BASED: hugs text on any terminal width)
+# Keep the base padding at +14 for a bit of breathing room.
 WIDTH=$((MAX_LINE_W + 14))
-
-# V1 Smart Auto-Padding: Minimum 60% of terminal for look
-MIN_TARGET=$(( TERM_W * 6 / 10 ))
-[[ $WIDTH -lt $MIN_TARGET ]] && WIDTH=$MIN_TARGET
 
 # Previews need stability, so we use a wider fixed range
 if [[ "$IS_PREVIEW" == "true" ]]; then

@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.2] - 2026-08-14
+
+### Added
+- **System Health panel** (replaces Doctor): a boxed, aligned status report (layout, snapshot, runtime, dependencies, profile, binary + leftover junk) rendered directly inside the **Dependencies** menu, with live PASS/FAIL counts.
+- **Fix All Issues**: runs the real fixers for every failing check — refreshes the UI/runtime and installs any missing dependencies (previously "fix" only refreshed the UI).
+- **Status dots on radio menus**: any menu option can now carry an `ok`/`missing`/`broken`/`outdated` dot (legend auto-shown); the main menu's **Dependencies** entry shows your aggregate install status.
+- **Dashboard channel line**: shows the active update channel (stable/testing) alongside system status.
+- **Version History** (merges the old "Restore Previous / Restore Older" flows): one screen under **Updates** listing every archived snapshot with its channel and date (`v1.5.0 (testing) · Aug 13 22:59`), an **Updated** row showing your last change ("v1.5.0 → v1.5.2 · testing → stable · Aug 14 09:41" — version and channel tags collapse when unchanged), and a dashboard **Updated** row that mirrors it. The newest snapshot is the default undo; archives are validated and swapped via a temp dir so a corrupt archive can never destroy the running app, and the channel is kept in the snapshot name for safety (restoring only reverts code — your channel preference stays). With no snapshots yet, it falls back to the git-saved previous version.
+- **Changelog link**: the Updates panel and the update prompt point straight at the What's New page for your channel.
+- **Update history log**: version + channel changes are recorded (last 15 kept) and drive the "Updated" rows above.
+
+### Fixed
+- **Main-menu boxes far too wide on desktop terminals**: box width was floored at 60% of the terminal, so the banner, dashboard and menus stretched on wide screens. Restored content-based sizing (v1.1 style) while keeping resize/alignment sync — the banner, dashboard and menus now hug their content on any terminal width.
+- **"Updates" menu exited after every action** — it now returns to itself (e.g. re-check after updating) until you choose Back.
+- **Rename fallout**: "Quick Setup" → "Guided Setup", "Reload & Apply UI" → "Apply & Reload UI", "Others" → "Power Tools" (including the bat-install hint in Cat styles).
+
+### Changed
+- Doctor is gone as a standalone menu item; **System Health** now lives under **Dependencies** (tap Dependencies → health panel → Re-run Health / **Fix / Install Dependencies** (checkbox multi-select) / Fix All / Back).
+- Dashboard status now uses the same colored ● dots as the menus.
+- Updates flow: the standalone "What's New" preview step was replaced by the changelog link, and the confirm now reads "Update to vX.Y.Z now?".
+- The main-menu **Dependencies** entry is back to a plain label (v1.5.1 look — the status dot/legend belongs in the Dependencies submenu, not the main menu), and the "What's new?" link now sits between two separators under the menu hints instead of floating under the panel box.
+
 ## [1.5.1] - 2026-08-13
 
 ### Fixed

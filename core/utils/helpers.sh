@@ -71,7 +71,7 @@ check_setup() {
         migrate_legacy
     fi
     if [[ ! -d "$PFY_SYS_DIR" || ! -f "$PFY_RUNTIME_ZSHRC" ]]; then
-        echo -e " \e[1;31m[!] Error: Run Quick Setup first.\e[0m"
+        echo -e " \e[1;31m[!] Error: Run Guided Setup first.\e[0m"
         press_enter
         return 1
     fi
@@ -102,15 +102,13 @@ get_spacer() {
     printf "%${offset}s" ""
 }
 
-# Unified box width: grows with the terminal (60% floor) but keeps content,
-# capped to fit. Used by the banner, dashboard and menus so every box tracks
-# the window size and stays aligned through resizes.
+# Unified box width: content-based (v1.1 style) so boxes hug their content on
+# wide terminals too, capped to fit. Used by the banner, dashboard and menus so
+# every box stays aligned through resizes.
 calc_box_width() {
     local w=$(( $1 ))
     local term_w
     term_w=$(tput cols 2>/dev/null || echo 80)
-    local min_target=$(( term_w * 6 / 10 ))
-    [[ $w -lt $min_target ]] && w=$min_target
     [[ $w -gt $((term_w - 2)) ]] && w=$((term_w - 2))
     [[ $w -lt 40 ]] && w=40
     printf "%d" "$w"

@@ -289,18 +289,23 @@ load_prefs
 calculate_ui_width
 
 update_status() {
-    # shellcheck disable=SC2034
-    STATUS_ZSH=$(check_status "zsh")
-    # shellcheck disable=SC2034
-    STATUS_PKGS=$(check_status "figlet" "git" "lolcat")
+    # Status dots (green=ok, red=missing) — matches menu/health status dots
+    local ok_dot="\033[1;32m●\033[0m"
+    local bad_dot="\033[1;31m●\033[0m"
+
+    STATUS_ZSH=$(command -v zsh &>/dev/null && echo "$ok_dot" || echo "$bad_dot")
+    STATUS_PKGS=$( { check_status "figlet" "git" >/dev/null; } && echo "$ok_dot" || echo "$bad_dot")
     # OMZ: bundled (deps/) OR any system-wide oh-my-zsh counts as available
     if [[ -f "$PFY_DEPS_OMZ/oh-my-zsh.sh" || -f "/usr/share/oh-my-zsh/oh-my-zsh.sh" ]]; then
-        STATUS_OMZ="\033[1;32m✔\033[0m"
+        STATUS_OMZ="$ok_dot"
     else
-        STATUS_OMZ="\033[1;31m✘\033[0m"
+        STATUS_OMZ="$bad_dot"
     fi
-    # shellcheck disable=SC2034
-    STATUS_PLUG=$(check_path "$PFY_DEPS_PLUGINS/zsh-autosuggestions")
+    if [[ -d "$PFY_DEPS_PLUGINS/zsh-autosuggestions" && -d "$PFY_DEPS_PLUGINS/zsh-syntax-highlighting" ]]; then
+        STATUS_PLUG="$ok_dot"
+    else
+        STATUS_PLUG="$bad_dot"
+    fi
 }
 
 update_status
@@ -339,12 +344,11 @@ while true; do
     fi
     
     MAIN_CHOICE=$(radio_menu "Promptify v${VERSION}" "draw_dashboard" "" 0 -1 \
-        "Quick Setup" \
-        "Reload & Apply UI" \
+        "Guided Setup" \
+        "Apply & Reload UI" \
         "Customization" \
         "Dependencies" \
         "Updates" \
-        "Doctor" \
         "Uninstall" \
         "Exit")
 
@@ -369,9 +373,8 @@ while true; do
             manage_dependencies; update_status 
             ;;
         4) updates_menu; update_status ;;
-        5) doctor_menu ;;
-        6) uninstall_promptify ;;
-        7) 
+        5) uninstall_promptify ;;
+        6) 
             if confirm_action "Exit Promptify?" "y"; then
                 exit_script
             fi

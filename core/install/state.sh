@@ -165,7 +165,7 @@ backup_bundled_figlet_fonts() {
 }
 
 # Apply the Termux UI (colors, font, Android properties, figlet fonts). Shared by
-# the setup installer and "Reload & Apply UI" so the block exists once. Snapshots
+# the setup installer and "Apply & Reload UI" so the block exists once. Snapshots
 # are taken before writing; idempotent re-applies never re-capture.
 sync_termux_ui() {
     [[ "$OS_TYPE" == "termux" ]] || return 0

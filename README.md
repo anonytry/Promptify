@@ -46,12 +46,11 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/TopexGuy/promptify/refs/
 
 ## Main Menu
 
-- **Quick Setup** — installs dependencies and configures everything from scratch.
-- **Reload & Apply UI** — applies your current preferences instantly.
+- **Guided Setup** — installs dependencies and configures everything from scratch.
+- **Apply & Reload UI** — applies your current preferences instantly.
 - **Customization** — banner, fonts, prompt themes and prompt styles.
-- **Dependencies** — install/repair zsh, Oh-My-Zsh, plugins, figlet and power tools.
-- **Updates** — check for updates, switch Stable/Testing channels, restore a previous or older version.
-- **Doctor** — a 5-point health check (layout, snapshot integrity, runtime syntax, dependencies, managed profile + global command) with one-command repair.
+- **Dependencies** — a System Health panel plus install/repair for zsh, Oh-My-Zsh, plugins, figlet and power tools (with a one-tap "Fix All").
+- **Updates** — check for updates, switch Stable/Testing channels, and browse **Version History** (archived snapshots with channel + date) to restore any previous version.
 - **Uninstall** — restores your original config from the install snapshot (time-travel) and verifies the system is clean.
 
 ## Customization

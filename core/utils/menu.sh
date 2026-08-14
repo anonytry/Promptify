@@ -49,13 +49,13 @@ draw_menu_item() {
     fi
     if [[ $index -eq $cursor ]]; then
         # Highlighted
-        printf '\033[2K\r%b \033[1;36m❯\033[0m \033[1;36m%s\033[0m\n' "$spacer" "$label" >&2
+        printf '\033[2K\r%b \033[1;36m❯\033[0m \033[1;36m%s\033[0m%b\n' "$spacer" "$label" "$dot" >&2
     elif [[ $index -eq $active_idx ]]; then
         # Active
-        printf '\033[2K\r%b   \033[1;37m%s\033[0m\n' "$spacer" "$label" >&2
+        printf '\033[2K\r%b   \033[1;37m%s\033[0m%b\n' "$spacer" "$label" "$dot" >&2
     else
         # Dimmed
-        printf '\033[2K\r%b   \033[2;37m%s\033[0m\n' "$spacer" "$label" >&2
+        printf '\033[2K\r%b   \033[2;37m%s\033[0m%b\n' "$spacer" "$label" "$dot" >&2
     fi
 }
 
@@ -252,6 +252,19 @@ radio_menu() {
         fi
     done
 
+    # Parse status dots (e.g. "Label|ok" / "|missing" / "|broken" / "|outdated")
+    local status=()
+    for i in "${!options[@]}"; do
+        status[i]=""
+        local st
+        for st in ok missing broken outdated; do
+            if [[ "${options[i]}" == *"|$st" ]]; then
+                status[i]="$st"
+                options[i]="${options[i]%|$st}"
+            fi
+        done
+    done
+
     # Never start on a disabled option
     while [[ "${disabled[$cursor]}" == "true" ]]; do
         ((cursor++)); [[ $cursor -ge ${#options[@]} ]] && cursor=0
@@ -323,7 +336,23 @@ radio_menu() {
 
             # Navigation hints
             center_print "\e[1;33m [ ARROWS ]\e[0m Nav | \e[1;33m[ ENTER ]\e[0m Select | \e[1;33m[ ESC ]\e[0m Back" >&2
+            # Status legend (only when any option carries a status dot)
+            local has_status=false
+            local st
+            for st in "${status[@]}"; do
+                [[ -n "$st" ]] && has_status=true
+            done
+            if [[ "$has_status" == "true" ]]; then
+                center_print "\e[1;32m●\e[0m Installed  \e[1;31m●\e[0m Missing  \e[1;33m●\e[0m Broken  \e[2;32m●\e[0m Outdated" >&2
+            fi
             draw_separator "$bar_w" "$bar_spacer" >&2
+            # Optional footer note (e.g. the "What's new?" link), boxed by
+            # separators. Opt-in: set MENU_NOTE before calling radio_menu and
+            # clear it after it returns — no other menu shows anything extra.
+            if [[ -n "${MENU_NOTE:-}" ]]; then
+                center_print "$MENU_NOTE" >&2
+                draw_separator "$bar_w" "$bar_spacer" >&2
+            fi
             printf '\n' >&2
 
             redraw=false
@@ -348,7 +377,7 @@ radio_menu() {
             opt_spacer=$(get_spacer "$opt_block_w")
 
             for i in "${!options[@]}"; do
-                draw_menu_item "${options[i]}" "$i" "$cursor" "$active_idx" "$opt_spacer" "radio" "false" "${disabled[i]}"
+                draw_menu_item "${options[i]}" "$i" "$cursor" "$active_idx" "$opt_spacer" "radio" "false" "${disabled[i]}" "${status[i]}"
             done
 
             last_footer_lines=0

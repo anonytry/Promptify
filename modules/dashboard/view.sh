@@ -16,10 +16,14 @@ draw_dashboard() {
     local s_omz="\033[1;32m$STATUS_OMZ\033[0m"
     local s_plug="\033[1;32m$STATUS_PLUG\033[0m"
     local status_line="Status  : $s_pkgs Pkgs | $s_zsh Zsh | $s_omz OMZ | $s_plug Plug"
+    local chan_label="stable"
+    [[ "$CUR_CHANNEL" == "testing" ]] && chan_label="testing"
+    local chan_line="Channel : \033[1;36m$chan_label\033[0m"
+    local upd_line="Updated : \033[1;32m$(last_update_text)\033[0m"
 
     # 2. Calculate required width
     local max_w=0
-    for line in "$sys_line" "$ker_line" "$and_line" "$status_line"; do
+    for line in "$sys_line" "$ker_line" "$and_line" "$status_line" "$chan_line" "$upd_line"; do
         [[ -z "$line" ]] && continue
         local lw
         lw=$(get_clean_len "$line")
@@ -27,7 +31,7 @@ draw_dashboard() {
     done
 
     local box_w
-    box_w=$(calc_box_width $((max_w + 6))) # Padding + 60% terminal floor
+    box_w=$(calc_box_width $((max_w + 6))) # Padding, content-based
 
     # Export for menu synchronization
     export BOX_WIDTH=$box_w
@@ -56,5 +60,7 @@ draw_dashboard() {
     [[ -n "$and_line" ]] && draw_box_line "$and_line" "$box_w" "│" "$b_clr" "$spacer" "left" >&2
     printf "%b\n" "$line_mid" >&2
     draw_box_line "$status_line" "$box_w" "│" "$b_clr" "$spacer" "left" >&2
+    draw_box_line "$chan_line" "$box_w" "│" "$b_clr" "$spacer" "left" >&2
+    draw_box_line "$upd_line" "$box_w" "│" "$b_clr" "$spacer" "left" >&2
     printf "%b\n" "$line_bot" >&2
 }

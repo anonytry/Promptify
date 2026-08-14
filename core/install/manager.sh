@@ -81,7 +81,42 @@ dep_status() {
     esac
 }
 
+# Aggregate status across every Dependencies component (missing > broken > outdated).
+dep_agg() {
+    local agg="" s
+    for s in $(for c in base omz plugins assets power; do dep_status "$c"; done); do
+        case "$s" in
+            missing) agg="missing" ;;
+            broken)  [[ "$agg" != "missing" ]] && agg="broken" ;;
+            outdated) [[ -z "$agg" || "$agg" == "ok" ]] && agg="outdated" ;;
+        esac
+    done
+    echo "${agg:-ok}"
+}
+
+# Dependencies entry point: health panel + radio sub-menu.
 manage_dependencies() {
+    local opts=(
+        "Re-run Health Checks"
+        "Fix / Install Dependencies"
+        "Fix All Issues"
+        "Back"
+    )
+    while true; do
+        local choice
+        choice=$(radio_menu "System Dependencies" "health_panel" "" 0 -1 "${opts[@]}")
+        case "$choice" in
+            "CANCELLED") return ;;
+            0) continue ;;
+            1) dependency_installer ;;
+            2) fix_all_issues ;;
+            3) return ;;
+        esac
+    done
+}
+
+# Fix / Install Dependencies: checkbox multi-select of each component.
+dependency_installer() {
     local opts=()
     local actions=()
 
@@ -98,7 +133,7 @@ manage_dependencies() {
     opts+=("Promptify UI Assets|$(dep_status assets)")
     actions+=(sync_assets)
 
-    opts+=("Others|$(dep_status power)")
+    opts+=("Power Tools|$(dep_status power)")
     actions+=(install_power_tools)
 
     # 2. Run checkbox menu

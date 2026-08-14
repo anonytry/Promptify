@@ -3,7 +3,7 @@
 manage_cat() {
     if ! is_installed bat && ! is_installed batcat; then
         center_print "\e[1;31m[!] bat is not installed.\e[0m"
-        center_print "\e[1;33m[*] Install it from Dependencies > Others.\e[0m"
+        center_print "\e[1;33m[*] Install it from Dependencies > Power Tools.\e[0m"
         press_enter
         return
     fi
