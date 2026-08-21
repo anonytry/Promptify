@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.3] - 2026-08-21
+
+### Added
+- **Custom keyboard layout editor**: simplified fixed 2×8 (16 buttons) editor under Customization → Keyboard Layout. Edit any key position, add/remove popups, reset to default. Layouts saved to `~/.promptify/userdata/custom-layout.keys`.
+- **Key picker with 5 tabs**: Navigation, Modifiers, Fn Keys, Symbols (28 common chars), and Macros (15 presets + custom input).
+- **Three keyboard layouts**: Advanced (8-key with popups, default), Simple (8-key plain), Custom (user-designed). All use 2×8 grid.
+- **Consistent preview formatting**: all three layout previews use aligned 6-char columns with popup markers.
+
+### Fixed
+- **"Could not load extra-keys" error on custom layout save**: the extra-keys output format had missing `\` line continuations, causing Termux to fail parsing the properties file. Both the save function and `sync_termux_ui` now generate valid multi-line `\` format.
+- **Custom layout preview now shows popup markers**: preview in the keyboard picker displays `^popup` for keys with popups.
+- **Powerlevel10k wizard skip was silently ignored on first install**: added `load_prefs()` before `refresh_ui()` in `guided_setup()` so `SKIP_P10K` is available when the runtime config is generated.
+- **Macro keys corrupted by editor save**: editor was wrapping macro tokens in single quotes (`'{macro:...}'`), producing literal text instead of button actions. Now delegates properties generation to `sync_termux_ui` which handles macros correctly.
+- **Editor save duplicated properties generation**: removed the drifted duplicate extra-keys generator from `_kb_save_layout` — now saves `.keys` file only and calls `sync_termux_ui` for properties, ensuring snapshot/fingerprint tracking and consistent output.
+- **Lowercase key names broke Termux buttons**: typing `esc` or `home` in custom key input validated successfully but emitted lowercase, which Termux doesn't recognize. Now always uppercases known key names.
+- **Custom layout with missing `.keys` file silently applied wrong layout**: `sync_termux_ui` now falls back to Advanced and fixes the persisted pref when the custom file is missing.
+- **Editor box text centering**: fixed pad_l rounding (ceil division) and minimum box width (8 chars) so key names center properly.
+- **Comma key (` ,`) removed from symbol picker**: reserved as the `.keys` file delimiter — selecting it would corrupt saved layouts on reload.
+
+### Removed
+- Dead `parse_key_token()` function (never called).
+- Redundant single-char branch in `resolve_key_input()` (identical to fallthrough).
+- Duplicate extra-keys generator from `_kb_save_layout` (replaced by `sync_termux_ui` call).
+
 ## [1.5.2] - 2026-08-14
 
 ### Added

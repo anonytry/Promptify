@@ -40,6 +40,7 @@ load_prefs() {
         CUR_PROMPT_STYLE=$(get_pref STYLE "$prefs_file" "parrot")
         CUR_CHANNEL=$(get_pref CHANNEL "$prefs_file" "")
         SKIP_P10K=$(get_pref SKIP_P10K "$prefs_file" "false")
+        CUR_KEYBOARD=$(get_pref KEYBOARD "$prefs_file" "advanced")
 
         local b t
         b=$(get_pref THEME_BORDER "$prefs_file" "")

@@ -25,7 +25,7 @@ run_health_checks() {
         HEALTH_FIXES+=(migrate_legacy)
         HEALTH_NOTE=$((HEALTH_NOTE + 1))
     elif [[ -f "$PFY_MANIFEST" ]]; then
-        HEALTH_ROWS+=("Layout|ok|New (APK-style) install")
+        HEALTH_ROWS+=("Layout|ok|Promptify installed")
         HEALTH_FIXES+=(none)
         HEALTH_PASS=$((HEALTH_PASS + 1))
     else

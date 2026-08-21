@@ -145,6 +145,11 @@ guided_setup() {
     setup_preferences
     setup_persist
 
+    # Re-read prefs written during setup_snapshot (SKIP_P10K, NAME, etc.)
+    # so generate_runtime() picks them up.  Without this, load_prefs() ran
+    # only at startup (before setup_snapshot) and SKIP_P10K was still "false".
+    load_prefs
+
     # Apply writes the managed ~/.zshrc line, generates the runtime, records
     # install state and writes the self-contained uninstaller.
     refresh_ui || center_print "\033[1;33m[!] UI refresh had minor issues.\033[0m"

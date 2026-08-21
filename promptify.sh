@@ -285,6 +285,8 @@ CUR_CHANNEL="stable"
 BANNER_NAME="Promptify"
 # shellcheck disable=SC2034
 USE_BANNER="true"
+# shellcheck disable=SC2034
+CUR_KEYBOARD="advanced"
 load_prefs
 calculate_ui_width
 

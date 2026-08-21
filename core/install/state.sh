@@ -178,13 +178,66 @@ sync_termux_ui() {
     cp "$asset_dir/colors.properties" "$HOME/.termux/" || true
     cp "$asset_dir/font.ttf" "$HOME/.termux/" || true
 
-    local major_ver
-    major_ver=$(echo "$ANDROID_VER" | grep -oE '^[0-9]+' || echo "0")
-    if [[ "$major_ver" -gt 0 && "$major_ver" -le 7 ]]; then
-        cp "$asset_dir/termux.properties2" "$HOME/.termux/termux.properties" || true
-    else
-        cp "$asset_dir/termux.properties" "$HOME/.termux/" || true
-    fi
+    local kb="${CUR_KEYBOARD:-advanced}"
+    case "$kb" in
+        custom)
+            local custom_file="${CUSTOM_LAYOUT_FILE:-$PFY_USERDATA/custom-layout.keys}"
+            if [[ -f "$custom_file" ]]; then
+                local base="$asset_dir/termux.properties"
+                local tmp="$HOME/.termux/termux.properties.tmp"
+                sed '/^extra-keys/,$d' "$base" > "$tmp" 2>/dev/null
+                echo "" >> "$tmp"
+                echo "# Custom layout (designed with Promptify)" >> "$tmp"
+                echo "extra-keys = [ \\" >> "$tmp"
+                local first_row=true
+                while IFS= read -r cline; do
+                    [[ -z "$cline" ]] && continue
+                    local arr_line="  [ "
+                    local first_key=true
+                    IFS=',' read -ra _ck <<< "$cline"
+                    for _k in "${_ck[@]}"; do
+                        [[ -z "$_k" ]] && continue
+                        if [[ "$first_key" == "true" ]]; then
+                            first_key=false
+                        else
+                            arr_line+=", "
+                        fi
+                        if [[ "$_k" == *"popup:"* ]]; then
+                            local _bk _pk
+                            _bk=$(echo "$_k" | sed -n 's/.*key:\([^;]*\).*/\1/p')
+                            _pk=$(echo "$_k" | sed -n 's/.*popup:\([^}]*\).*/\1/p')
+                            arr_line+="{key: '$_bk', popup: '$_pk'}"
+                        elif [[ "$_k" == *"{"* ]]; then
+                            arr_line+="$_k"
+                        else
+                            arr_line+="'$_k'"
+                        fi
+                    done
+                    if [[ "$first_row" == "true" ]]; then
+                        first_row=false
+                        echo "$arr_line ] \\" >> "$tmp"
+                    else
+                        echo "  , \\" >> "$tmp"
+                        echo "$arr_line ] \\" >> "$tmp"
+                    fi
+                done < "$custom_file"
+                echo "]" >> "$tmp"
+                cp "$tmp" "$HOME/.termux/termux.properties" 2>/dev/null
+                rm -f "$tmp"
+            else
+                # Custom file missing — fall back to advanced and fix pref
+                CUR_KEYBOARD="advanced"
+                set_pref KEYBOARD "advanced" 2>/dev/null || true
+                cp "$asset_dir/termux.properties" "$HOME/.termux/termux.properties" || true
+            fi
+            ;;
+        simple)
+            cp "$asset_dir/termux.properties2" "$HOME/.termux/termux.properties" || true
+            ;;
+        *)
+            cp "$asset_dir/termux.properties" "$HOME/.termux/" || true
+            ;;
+    esac
 
     snapshot_created "$HOME/.termux/colors.properties"
     snapshot_created "$HOME/.termux/font.ttf"
